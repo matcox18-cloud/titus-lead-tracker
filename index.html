@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Titus CPAs — Lead Tracker</title>
+<meta name="theme-color" content="#132b49" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Titus Leads" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --navy:#132b49; --navy-700:#1c3a5e; --navy-600:#27496e; --gold:#d1af44; --gold-soft:#e7d599;
+  --ink:#1c2530; --muted:#6b7686; --line:#e6e9ee; --bg:#f4f6f9; --card:#ffffff; --white:#fff;
+  --good:#2f9e74; --good-bg:#e6f4ee; --warn:#c9803a; --warn-bg:#fbefe2; --danger:#c0473e; --danger-bg:#fbeae8;
+  --shadow:0 1px 2px rgba(19,43,73,.06), 0 6px 18px rgba(19,43,73,.06);
+  --shadow-lg:0 12px 40px rgba(19,43,73,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Hanken Grotesk',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg);font-size:14px;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Fraunces',Georgia,serif}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select,textarea{font-family:inherit;font-size:14px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#cdd4dd;border-radius:8px}
+
+/* ---------- Layout ---------- */
+.app{display:flex;min-height:100vh}
+.sidebar{width:248px;background:var(--navy);color:#cdd8e6;flex-shrink:0;position:fixed;top:0;bottom:0;left:0;display:flex;flex-direction:column;z-index:40}
+.brand{padding:22px 20px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.tc-mark{width:34px;height:38px;flex-shrink:0}
+.brand-text{line-height:1}
+.brand-text .b1{font-family:'Fraunces',serif;font-weight:600;font-size:21px;color:#fff;letter-spacing:.2px}
+.brand-text .b2{font-size:9.5px;letter-spacing:3px;color:var(--gold);font-weight:600;margin-top:3px}
+.nav{padding:14px 12px;flex:1}
+.nav-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#6f86a3;padding:10px 12px 6px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 12px;border-radius:10px;color:#bcc9da;font-weight:500;font-size:14px;margin-bottom:2px;transition:.15s}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.active{background:var(--gold);color:var(--navy);font-weight:600}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.nav-foot{padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#6f86a3}
+.nav-foot .tagline{font-family:'Fraunces',serif;font-style:italic;color:#9fb0c6;font-size:12.5px;margin-bottom:4px}
+
+.main{flex:1;margin-left:248px;display:flex;flex-direction:column;min-width:0}
+.topbar{background:var(--white);border-bottom:1px solid var(--line);padding:14px 26px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:30}
+.topbar h1{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--navy);white-space:nowrap}
+.topbar .sub{color:var(--muted);font-size:12.5px;margin-top:1px}
+.search{flex:1;max-width:380px;position:relative}
+.search input{width:100%;padding:9px 12px 9px 36px;border:1px solid var(--line);border-radius:9px;background:#fbfcfd}
+.search input:focus{outline:none;border-color:var(--gold);background:#fff}
+.search svg{position:absolute;left:11px;top:9px;width:17px;height:17px;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:9px;font-weight:600;font-size:13.5px;transition:.15s;white-space:nowrap}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-gold:hover{background:#c39f33}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-navy:hover{background:var(--navy-700)}
+.btn-ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+.btn-ghost:hover{border-color:#c9d0da;background:#fbfcfd}
+.btn svg{width:16px;height:16px}
+.spacer{flex:1}
+.avatar-me{width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0}
+
+.content{padding:24px 26px 60px;flex:1}
+.mobile-top{display:none}
+.bottom-nav{display:none}
+
+/* ---------- KPI cards ---------- */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+.kpi .lab{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:7px}
+.kpi .lab .ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.kpi .ic svg{width:16px;height:16px}
+.kpi .val{font-family:'Fraunces',serif;font-size:30px;font-weight:600;color:var(--navy);margin-top:12px;line-height:1}
+.kpi .delta{font-size:12px;margin-top:7px;color:var(--muted)}
+.kpi .delta b{color:var(--good)}
+.ic-navy{background:#eaf0f7;color:var(--navy)}
+.ic-gold{background:#faf3dd;color:#a8862a}
+.ic-green{background:var(--good-bg);color:var(--good)}
+.ic-red{background:var(--danger-bg);color:var(--danger)}
+
+.dash-row{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-bottom:18px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.panel-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.panel-head h3{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--navy)}
+.panel-head .hint{font-size:11.5px;color:var(--muted)}
+.panel-body{padding:16px 18px}
+
+/* funnel */
+.funnel-row{display:flex;align-items:center;gap:12px;margin-bottom:11px}
+.funnel-row .nm{width:120px;font-size:12.5px;color:var(--ink);font-weight:500;flex-shrink:0}
+.funnel-bar{flex:1;height:26px;background:#eef1f5;border-radius:7px;overflow:hidden}
+.funnel-fill{height:100%;background:linear-gradient(90deg,var(--navy),var(--navy-600));border-radius:7px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;color:#fff;font-size:11.5px;font-weight:600;min-width:26px}
+.funnel-row .ct{width:78px;text-align:right;font-size:12px;color:var(--muted);flex-shrink:0}
+
+/* lists */
+.mini-row{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid #f0f2f5}
+.mini-row:last-child{border-bottom:none}
+.mini-av{width:34px;height:34px;border-radius:9px;background:#eaf0f7;color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+.mini-main{flex:1;min-width:0}
+.mini-main .nm{font-weight:600;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-main .sub{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-end{text-align:right;flex-shrink:0}
+
+/* origination table */
+.orig-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #f0f2f5}
+.orig-row:last-child{border-bottom:none}
+.orig-row .nm{flex:1;font-weight:600;font-size:13px}
+.orig-bar{width:120px;height:8px;background:#eef1f5;border-radius:5px;overflow:hidden}
+.orig-bar i{display:block;height:100%;background:var(--gold)}
+.orig-row .val{width:84px;text-align:right;font-size:12.5px;font-weight:600;color:var(--navy)}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.tier1{background:#eaf0f7;color:var(--navy)}
+.tier2{background:#faf3dd;color:#a8862a}
+.tier3{background:#eef1f5;color:#5a6675}
+.pill-src{background:#f1f4f8;color:#54627a;border:1px solid #e4e9f0}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+
+/* ---------- Pipeline / Kanban ---------- */
+.pipe-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.filter-sel{padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);font-weight:500}
+.filter-sel:focus{outline:none;border-color:var(--gold)}
+.board{display:flex;gap:14px;overflow-x:auto;padding-bottom:18px;align-items:flex-start}
+.col{width:268px;flex-shrink:0;background:#eef1f5;border-radius:13px;display:flex;flex-direction:column;max-height:calc(100vh - 230px)}
+.col-head{padding:13px 14px 10px;position:sticky;top:0}
+.col-head .t{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:var(--navy)}
+.col-head .meta{display:flex;justify-content:space-between;margin-top:7px;font-size:11.5px;color:var(--muted)}
+.col-head .ct{background:#fff;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;color:var(--navy)}
+.col-body{padding:0 10px 12px;overflow-y:auto;flex:1}
+.col.drop-on{background:#e3eaf3;outline:2px dashed var(--gold);outline-offset:-4px}
+.card{background:#fff;border:1px solid var(--line);border-radius:11px;padding:13px;margin-bottom:10px;box-shadow:0 1px 2px rgba(19,43,73,.05);cursor:grab;transition:.12s}
+.card:hover{box-shadow:var(--shadow);transform:translateY(-1px);border-color:#d7dde6}
+.card.dragging{opacity:.45}
+.card .ch{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.card .nm{font-weight:700;font-size:13.5px;color:var(--ink);line-height:1.25}
+.card .co{font-size:12px;color:var(--muted);margin-top:1px}
+.card .row2{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap}
+.card .val{font-family:'Fraunces',serif;font-weight:600;color:var(--navy);font-size:14px}
+.card .foot{display:flex;align-items:center;justify-content:space-between;margin-top:11px;padding-top:10px;border-top:1px solid #f0f2f5}
+.card .nextstep{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#54627a;min-width:0}
+.card .nextstep svg{width:13px;height:13px;flex-shrink:0;color:var(--gold)}
+.card .nextstep span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.owner-chip{width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.touch{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.touch.overdue{color:var(--danger);font-weight:600}
+
+/* ---------- Table ---------- */
+.table-wrap{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;padding:13px 16px;border-bottom:1px solid var(--line);background:#fafbfc;white-space:nowrap}
+tbody td{padding:13px 16px;border-bottom:1px solid #f0f2f5;font-size:13px;vertical-align:middle}
+tbody tr{cursor:pointer;transition:.1s}
+tbody tr:hover{background:#fafbfc}
+tbody tr:last-child td{border-bottom:none}
+.t-name{font-weight:700;color:var(--ink)}
+.t-co{font-size:11.5px;color:var(--muted)}
+.stage-tag{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12px}
+
+/* ---------- Drawer ---------- */
+.overlay{position:fixed;inset:0;background:rgba(19,43,73,.45);z-index:50;opacity:0;pointer-events:none;transition:.2s}
+.overlay.show{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:480px;max-width:94vw;background:#fff;z-index:60;box-shadow:var(--shadow-lg);transform:translateX(100%);transition:transform .26s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+.drawer.show{transform:translateX(0)}
+.dr-head{background:var(--navy);color:#fff;padding:20px 22px}
+.dr-head .top{display:flex;justify-content:space-between;align-items:flex-start}
+.dr-head .nm{font-family:'Fraunces',serif;font-size:22px;font-weight:600}
+.dr-head .co{color:#aebfd4;font-size:13.5px;margin-top:2px}
+.dr-close{color:#aebfd4;font-size:22px;line-height:1;padding:2px 6px;border-radius:6px}
+.dr-close:hover{background:rgba(255,255,255,.12);color:#fff}
+.dr-badges{display:flex;gap:7px;margin-top:14px;flex-wrap:wrap}
+.dr-body{flex:1;overflow-y:auto;padding:20px 22px}
+.dr-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;margin-bottom:8px}
+.field .l{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-bottom:3px}
+.field .v{font-size:13.5px;color:var(--ink);font-weight:500}
+.field .v a{color:var(--navy)}
+.sect-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--navy);margin:22px 0 12px;display:flex;align-items:center;gap:8px}
+.sect-title::after{content:"";flex:1;height:1px;background:var(--line)}
+.nextbox{background:#faf6e8;border:1px solid #ecdfb4;border-radius:11px;padding:14px}
+.nextbox .l{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#a8862a;font-weight:700;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.nextbox .act{font-weight:600;font-size:14px;color:var(--ink)}
+.nextbox .due{font-size:12px;color:var(--muted);margin-top:3px}
+
+.stage-pick{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.stage-pick button{padding:6px 10px;border-radius:8px;font-size:11.5px;font-weight:600;background:#f1f4f8;color:#54627a;border:1px solid transparent}
+.stage-pick button.on{background:var(--navy);color:#fff}
+.stage-pick button:hover{border-color:var(--gold)}
+
+/* timeline */
+.timeline{position:relative;padding-left:26px}
+.timeline::before{content:"";position:absolute;left:9px;top:4px;bottom:4px;width:2px;background:var(--line)}
+.tl-item{position:relative;padding-bottom:16px}
+.tl-item:last-child{padding-bottom:0}
+.tl-dot{position:absolute;left:-22px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center}
+.tl-dot svg{width:9px;height:9px;color:var(--navy)}
+.tl-item .h{display:flex;justify-content:space-between;gap:8px}
+.tl-item .ty{font-weight:600;font-size:13px;color:var(--ink)}
+.tl-item .dt{font-size:11px;color:var(--muted);white-space:nowrap}
+.tl-item .nt{font-size:12.5px;color:#54627a;margin-top:2px;line-height:1.4}
+.tl-item .by{font-size:11px;color:var(--muted);margin-top:3px}
+
+.logbox{background:#fafbfc;border:1px solid var(--line);border-radius:11px;padding:14px;margin-top:6px}
+.logbox .lr{display:flex;gap:8px;margin-bottom:9px}
+.logbox select,.logbox input,.logbox textarea{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.logbox textarea{resize:vertical;min-height:54px;width:100%}
+.logbox select:focus,.logbox input:focus,.logbox textarea:focus{outline:none;border-color:var(--gold)}
+
+/* ---------- Modal ---------- */
+.modal{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:.2s}
+.modal.show{opacity:1;pointer-events:auto}
+.modal-card{background:#fff;border-radius:16px;width:560px;max-width:100%;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-lg);transform:translateY(12px);transition:.2s}
+.modal.show .modal-card{transform:none}
+.modal-head{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.modal-head h3{font-family:'Fraunces',serif;font-size:19px;color:var(--navy);font-weight:600}
+.modal-body{padding:22px 24px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg-full{grid-column:1/-1}
+.form-grid label{display:block;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.form-grid input,.form-grid select,.form-grid textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#fbfcfd}
+.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus{outline:none;border-color:var(--gold);background:#fff}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px}
+
+.empty{padding:50px 20px;text-align:center;color:var(--muted)}
+.empty svg{width:42px;height:42px;color:#c9d2dd;margin-bottom:10px}
+
+/* ---------- Responsive ---------- */
+@media(max-width:1040px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.dash-row{grid-template-columns:1fr}}
+@media(max-width:860px){
+  .sidebar{display:none}
+  .main{margin-left:0}
+  .topbar{display:none}
+  .mobile-top{display:flex;align-items:center;gap:12px;background:var(--navy);color:#fff;padding:14px 18px;position:sticky;top:0;z-index:30}
+  .mobile-top .tc-mark{width:28px;height:32px}
+  .mobile-top .b1{font-family:'Fraunces',serif;font-size:18px;color:#fff;font-weight:600}
+  .mobile-top .b2{font-size:8.5px;letter-spacing:2.5px;color:var(--gold);font-weight:600}
+  .mobile-search{margin-left:auto;width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center}
+  .mobile-search svg{width:18px;height:18px;color:#fff}
+  .content{padding:16px 14px 96px}
+  .kpi-grid{gap:11px}
+  .kpi{padding:14px;border-radius:12px}
+  .kpi .val{font-size:24px}
+  .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);z-index:45;padding:6px 4px 8px;box-shadow:0 -4px 20px rgba(19,43,73,.07)}
+  .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;color:var(--muted);font-size:10.5px;font-weight:600;border-radius:9px}
+  .bn-item svg{width:21px;height:21px}
+  .bn-item.active{color:var(--navy)}
+  .bn-item.active svg{color:var(--gold)}
+  .bn-add{color:var(--gold)}
+  .bn-add .plus{width:38px;height:38px;border-radius:12px;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;margin-top:-16px;box-shadow:var(--shadow)}
+  .bn-add .plus svg{width:22px;height:22px}
+  .drawer{width:100%;max-width:100%}
+  .dr-grid{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+  .mobile-searchbar{padding:10px 14px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:60px;z-index:25;display:none}
+  .mobile-searchbar.open{display:block}
+  .mobile-searchbar input{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:9px}
+}
+/* ---------- Login / cloud ---------- */
+#login{position:fixed;inset:0;z-index:90;background:linear-gradient(160deg,#0f2440,#1c3a5e);display:none;align-items:center;justify-content:center;padding:24px}
+#login.show{display:flex}
+.login-card{background:#fff;border-radius:18px;box-shadow:var(--shadow-lg);width:400px;max-width:100%;padding:36px 32px;text-align:center}
+.login-card .tc-mark{width:54px;height:60px;margin:0 auto 14px;display:block}
+.login-card h2{font-family:'Fraunces',serif;color:var(--navy);font-size:24px;font-weight:600}
+.login-card .tag{font-family:'Fraunces',serif;font-style:italic;color:var(--muted);font-size:13.5px;margin-top:6px;margin-bottom:24px}
+.login-card label{display:block;text-align:left;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.login-card input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fbfcfd;margin-bottom:14px}
+.login-card input:focus{outline:none;border-color:var(--gold);background:#fff}
+.login-card .btn{width:100%;justify-content:center;padding:12px}
+.login-msg{font-size:13px;margin-top:16px;color:var(--good);min-height:18px;line-height:1.4}
+.login-foot{font-size:11.5px;color:#9aa6b4;margin-top:22px}
+.cloud-banner{background:#faf6e8;border-bottom:1px solid #ecdfb4;color:#8a6d22;font-size:12.5px;padding:7px 26px;text-align:center}
+.user-pill{display:flex;align-items:center;gap:8px}
+.user-pill .nm{font-size:12.5px;font-weight:600;color:var(--ink)}
+.user-pill .logout{font-size:11px;color:var(--muted);cursor:pointer}
+.user-pill .logout:hover{color:var(--danger)}
+</style>
+</head>
+<body>
+<!-- Login (cloud mode only) -->
+<div id="login">
+  <div class="login-card">
+    <div id="loginMark"></div>
+    <h2>Titus Lead Tracker</h2>
+    <div class="tag">"We bring the structure. You build the legacy."</div>
+    <label>Work email</label>
+    <input id="loginEmail" type="email" placeholder="you@tituscpas.com" autocomplete="email" />
+    <button class="btn btn-navy" id="loginBtn">Send me a sign-in link</button>
+    <div class="login-msg" id="loginMsg"></div>
+    <div class="login-foot">A one-time secure link is emailed to you — no password to remember.</div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand" id="brandLogo"></div>
+    <nav class="nav" id="navMenu">
+      <div class="nav-label">Sales</div>
+    </nav>
+    <div class="nav-foot">
+      <div class="tagline">"We bring the structure.<br/>You build the legacy."</div>
+      <div id="saveStatus" style="color:#7e93ab;margin-bottom:3px">Saved locally</div>
+      Titus CPAs · Birmingham, AL
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="cloud-banner" id="cloudBanner" style="display:none"></div>
+    <header class="topbar">
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <div class="sub" id="pageSub">Lead pipeline overview</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="searchInput" placeholder="Search leads, companies, owners…" />
+      </div>
+      <button class="btn btn-gold" id="addBtnTop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg> New Lead</button>
+      <button class="btn btn-ghost" id="dataBtnTop" title="Data & backup" style="padding:9px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
+      <div class="avatar-me" title="Mat Cox">MC</div>
+    </header>
+
+    <!-- Mobile header -->
+    <div class="mobile-top">
+      <div id="mobileBrand" style="display:flex;align-items:center;gap:10px"></div>
+      <button class="mobile-search" id="mSearchBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button>
+      <button class="mobile-search" id="dataBtnM" title="Data & backup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></button>
+    </div>
+    <div class="mobile-searchbar" id="mSearchBar"><input id="searchInputM" placeholder="Search leads…" /></div>
+
+    <main class="content" id="content"></main>
+  </div>
+</div>
+
+<!-- Bottom nav (mobile) -->
+<nav class="bottom-nav" id="bottomNav"></nav>
+
+<!-- Drawer -->
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer"></aside>
+
+<!-- Add modal -->
+<div class="modal" id="modal"></div>
+
+<script>
+/* ============================================================
+   SUPABASE CONFIG  —  paste your two project values below.
+   Leave BOTH blank to run in LOCAL mode (saves to this browser
+   only). Fill BOTH in to switch to SHARED CLOUD mode (team login
+   + synced data). See SETUP-GUIDE for where to find these.
+   ============================================================ */
+const SUPABASE_URL = 'https://mxvxmpprqgwkujsceybk.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_zR4ghkZypguzB_sX4gFbCw_mZV2lSmH';
+
+const CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+let sb = CLOUD ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+let SESSION = null;
+let CURRENT_USER = 'Mat Cox';   // overwritten with logged-in user's name in cloud mode
+
+/* ============================ DATA ============================ */
+const STAGES = [
+  {id:'new',        name:'New Lead',          color:'#6b7686'},
+  {id:'contacted',  name:'Contacted',         color:'#3f72a4'},
+  {id:'qualified',  name:'Qualified',         color:'#2f6db0'},
+  {id:'meeting',    name:'Meeting Scheduled', color:'#7a59b0'},
+  {id:'proposal',   name:'Proposal Sent',     color:'#c9803a'},
+  {id:'won',        name:'Closed Won',        color:'#2f9e74'},
+  {id:'onboarding', name:'Onboarding',        color:'#d1af44'}
+];
+const stageById = id => STAGES.find(s=>s.id===id);
+const stageIndex = id => STAGES.findIndex(s=>s.id===id);
+
+const OWNERS = ['Mat Cox','Sam Bellman','Hudson Pitts','Tim Pitts'];
+const SOURCES = ['Client Referral','COI / Referral Partner','Existing Client Expansion','Website','LinkedIn','Networking Event','Google Search'];
+const TIERS = {
+  'I':  {cls:'tier1', label:'Tier I',   desc:'Business owner anchor'},
+  'II': {cls:'tier2', label:'Tier II',  desc:'Personal w/ business potential'},
+  'III':{cls:'tier3', label:'Tier III', desc:'Simple personal tax'}
+};
+const initials = n => n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const TODAY = new Date('2026-06-13');
+const daysAgo = d => Math.round((TODAY - new Date(d))/86400000);
+const fmtDate = d => new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+const fmtMoney = n => '$'+n.toLocaleString();
+
+const SEED_LEADS = [
+  {id:1, name:'Marcus Whitfield', company:'Whitfield Logistics, LLC', email:'marcus@whitfieldlog.com', phone:'(205) 555-0142', tier:'I', stage:'onboarding', value:42000, source:'Client Referral', referredBy:'Dale Roberts (client)', origination:'Mat Cox', owner:'Mat Cox', created:'2026-04-22',
+   nextStep:{action:'Send TaxDome portal invite + onboarding checklist', due:'2026-06-15'},
+   activities:[
+     {date:'2026-06-11', type:'Signed', note:'Engagement letter executed. Annual CAS + tax. Handing off to TaxDome.', by:'Mat Cox'},
+     {date:'2026-06-04', type:'Meeting', note:'Final scope review. Agreed monthly CAS package + 1120-S.', by:'Mat Cox'},
+     {date:'2026-05-20', type:'Proposal', note:'Sent tiered proposal — selected Tier I anchor package.', by:'Mat Cox'},
+     {date:'2026-05-06', type:'Call', note:'Discovery call. ~$6M revenue, 22 employees, outgrowing current bookkeeper.', by:'Mat Cox'}
+   ]},
+  {id:2, name:'Priya Anand', company:'Anand Dental Group', email:'priya@ananddental.com', phone:'(205) 555-0188', tier:'I', stage:'proposal', value:28000, source:'COI / Referral Partner', referredBy:'Regions Bank — J. Tolbert', origination:'Sam Bellman', owner:'Sam Bellman', created:'2026-05-02',
+   nextStep:{action:'Follow up on proposal — decision expected', due:'2026-06-13'},
+   activities:[
+     {date:'2026-06-06', type:'Proposal', note:'Sent proposal: CAS + practice profitability advisory.', by:'Sam Bellman'},
+     {date:'2026-05-28', type:'Meeting', note:'On-site at practice. Two locations, planning a third.', by:'Sam Bellman'},
+     {date:'2026-05-12', type:'Call', note:'Intro from banker. Frustrated w/ current CPA responsiveness.', by:'Sam Bellman'}
+   ]},
+  {id:3, name:'Daniel Crews', company:'Crews Custom Homes', email:'dan@crewshomes.com', phone:'(205) 555-0210', tier:'I', stage:'meeting', value:36000, source:'Networking Event', referredBy:'ABC Homebuilders mixer', origination:'Hudson Pitts', owner:'Hudson Pitts', created:'2026-05-18',
+   nextStep:{action:'Scope meeting at job site — Thu 10:00am', due:'2026-06-18'},
+   activities:[
+     {date:'2026-06-09', type:'Email', note:'Confirmed meeting. Sending agenda + doc request list.', by:'Hudson Pitts'},
+     {date:'2026-05-30', type:'Call', note:'Construction acctg / WIP schedules. Bonding requirements.', by:'Hudson Pitts'},
+     {date:'2026-05-18', type:'Note', note:'Met at homebuilders mixer. Strong fit, growing fast.', by:'Hudson Pitts'}
+   ]},
+  {id:4, name:'Rebecca Tran', company:'Tran Family Holdings', email:'rebecca.tran@gmail.com', phone:'(205) 555-0233', tier:'II', stage:'qualified', value:9500, source:'Existing Client Expansion', referredBy:'Crews Custom Homes (client)', origination:'Mat Cox', owner:'Hudson Pitts', created:'2026-05-21',
+   nextStep:{action:'Send personal + entity organizer', due:'2026-06-16'},
+   activities:[
+     {date:'2026-06-07', type:'Call', note:'Personal return + rental LLC. Path to Tier I as RE portfolio grows.', by:'Hudson Pitts'},
+     {date:'2026-05-21', type:'Note', note:'Referred by existing client. Multiple rentals + W-2.', by:'Mat Cox'}
+   ]},
+  {id:5, name:'Gerald Foster', company:'Foster & Sons HVAC', email:'gerald@fosterhvac.com', phone:'(205) 555-0277', tier:'I', stage:'qualified', value:31000, source:'Google Search', referredBy:'—', origination:'Sam Bellman', owner:'Sam Bellman', created:'2026-05-25',
+   nextStep:{action:'Schedule discovery / needs assessment', due:'2026-06-14'},
+   activities:[
+     {date:'2026-06-05', type:'Call', note:'Qualified — $3.2M rev, no current advisory relationship.', by:'Sam Bellman'},
+     {date:'2026-05-25', type:'Email', note:'Inbound via website contact form. Requested CAS info.', by:'Sam Bellman'}
+   ]},
+  {id:6, name:'Anita Boyd', company:'Boyd Wellness Studio', email:'anita@boydwellness.com', phone:'(205) 555-0301', tier:'II', stage:'contacted', value:6200, source:'LinkedIn', referredBy:'—', origination:'Hudson Pitts', owner:'Hudson Pitts', created:'2026-06-01',
+   nextStep:{action:'Second attempt — call back this week', due:'2026-06-15'},
+   activities:[
+     {date:'2026-06-03', type:'Email', note:'Sent intro + scheduling link. Awaiting reply.', by:'Hudson Pitts'},
+     {date:'2026-06-01', type:'Note', note:'Connected on LinkedIn. S-corp election question.', by:'Hudson Pitts'}
+   ]},
+  {id:7, name:'Thomas Reyes', company:'Reyes Brothers Auto', email:'tom@reyesauto.com', phone:'(205) 555-0322', tier:'I', stage:'contacted', value:24000, source:'Client Referral', referredBy:'Marcus Whitfield (client)', origination:'Mat Cox', owner:'Mat Cox', created:'2026-06-04',
+   nextStep:{action:'Book discovery call', due:'2026-06-16'},
+   activities:[
+     {date:'2026-06-08', type:'Call', note:'Left voicemail + follow-up text. Two locations.', by:'Mat Cox'},
+     {date:'2026-06-04', type:'Note', note:'Warm referral from Whitfield. Expecting our call.', by:'Mat Cox'}
+   ]},
+  {id:8, name:'Lauren Mitchell', company:'Mitchell Creative Co.', email:'lauren@mitchellcreative.com', phone:'(205) 555-0355', tier:'II', stage:'new', value:5400, source:'Website', referredBy:'—', origination:'Sam Bellman', owner:'Sam Bellman', created:'2026-06-11',
+   nextStep:{action:'Initial outreach — within 24 hrs', due:'2026-06-13'},
+   activities:[
+     {date:'2026-06-11', type:'Note', note:'Inbound web lead. Sole prop, considering LLC + S-corp.', by:'System'}
+   ]},
+  {id:9, name:'Victor Osei', company:'Osei Imports', email:'victor@oseiimports.com', phone:'(205) 555-0390', tier:'I', stage:'new', value:33000, source:'COI / Referral Partner', referredBy:'Bradford Law — counsel', origination:'Mat Cox', owner:'Mat Cox', created:'2026-06-12',
+   nextStep:{action:'Send intro email + book call', due:'2026-06-15'},
+   activities:[
+     {date:'2026-06-12', type:'Note', note:'Attorney referral. Import/distribution, multi-state nexus.', by:'Mat Cox'}
+   ]},
+  {id:10, name:'Karen Sloan', company:'Sloan Personal', email:'karen.sloan@gmail.com', phone:'(205) 555-0412', tier:'III', stage:'won', value:1200, source:'Website', referredBy:'—', origination:'Hudson Pitts', owner:'Hudson Pitts', created:'2026-05-09',
+   nextStep:{action:'Move to TaxDome — Tier III intake', due:'2026-06-14'},
+   activities:[
+     {date:'2026-06-10', type:'Signed', note:'Accepted Tier III engagement ($1,200). Simple 1040.', by:'Hudson Pitts'},
+     {date:'2026-05-29', type:'Proposal', note:'Sent flat-fee Tier III quote.', by:'Hudson Pitts'},
+     {date:'2026-05-09', type:'Email', note:'Inbound. Straightforward personal return.', by:'Hudson Pitts'}
+   ]},
+  {id:11, name:'Brandon Lee', company:'Lee Property Partners', email:'brandon@leeproperty.com', phone:'(205) 555-0440', tier:'I', stage:'meeting', value:38000, source:'COI / Referral Partner', referredBy:'Synovus — M. Hale', origination:'Sam Bellman', owner:'Sam Bellman', created:'2026-05-15',
+   nextStep:{action:'Proposal review meeting', due:'2026-06-19'},
+   activities:[
+     {date:'2026-06-02', type:'Meeting', note:'Reviewed portfolio. 14 doors + 2 commercial. Cost seg interest.', by:'Sam Bellman'},
+     {date:'2026-05-19', type:'Call', note:'Banker referral. Unhappy with current firm.', by:'Sam Bellman'}
+   ]},
+  {id:12, name:'Sophia Grant', company:'Grant Pediatrics', email:'sophia@grantpeds.com', phone:'(205) 555-0468', tier:'I', stage:'proposal', value:26000, source:'Client Referral', referredBy:'Anand Dental (prospect)', origination:'Sam Bellman', owner:'Sam Bellman', created:'2026-05-08',
+   nextStep:{action:'OVERDUE: follow up on proposal', due:'2026-06-08'},
+   activities:[
+     {date:'2026-05-26', type:'Proposal', note:'Sent CAS + tax proposal. Went quiet since.', by:'Sam Bellman'},
+     {date:'2026-05-14', type:'Meeting', note:'Practice acctg cleanup needed. Good fit.', by:'Sam Bellman'}
+   ]},
+  {id:13, name:'Derrick Hall', company:'Hall Electric', email:'derrick@hallelectric.com', phone:'(205) 555-0490', tier:'I', stage:'contacted', value:22000, source:'Networking Event', referredBy:'Chamber of Commerce event', origination:'Hudson Pitts', owner:'Hudson Pitts', created:'2026-06-02',
+   nextStep:{action:'Follow up — schedule discovery', due:'2026-06-17'},
+   activities:[
+     {date:'2026-06-06', type:'Email', note:'Sent firm overview + tiers one-pager.', by:'Hudson Pitts'},
+     {date:'2026-06-02', type:'Note', note:'Met at Chamber event. Job costing pain points.', by:'Hudson Pitts'}
+   ]},
+  {id:14, name:'Megan Cole', company:'Cole Consulting', email:'megan@coleconsult.com', phone:'(205) 555-0511', tier:'II', stage:'new', value:7800, source:'LinkedIn', referredBy:'—', origination:'Mat Cox', owner:'Mat Cox', created:'2026-06-12',
+   nextStep:{action:'Initial outreach call', due:'2026-06-16'},
+   activities:[
+     {date:'2026-06-12', type:'Note', note:'LinkedIn inbound. 1099 consultant going S-corp.', by:'Mat Cox'}
+   ]}
+];
+
+// ---- persistence (local + cloud) ----
+const STORE_KEY = 'titus_leads_v1';
+function ensureTouch(arr){ arr.forEach(l=>{ const a=l.activities[0]; if(a) l.lastTouch={date:a.date, type:a.type}; }); return arr; }
+function loadLeads(){
+  try{ const s=localStorage.getItem(STORE_KEY); if(s){ const d=JSON.parse(s); if(Array.isArray(d)&&d.length) return d; } }catch(e){}
+  return JSON.parse(JSON.stringify(SEED_LEADS));
+}
+function persist(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(LEADS)); }catch(e){} updateSaveStatus(); }
+
+let LEADS = [];
+
+// Save a single lead. Cloud: upsert one row. Local: write whole store.
+async function saveLead(l){
+  if(CLOUD){
+    try{ await sb.from('leads').upsert({id:l.id, payload:l, updated_at:new Date().toISOString()}); updateSaveStatus(); }
+    catch(e){ console.error('saveLead', e); }
+  } else persist();
+}
+// Save the entire set (used by import / reset).
+async function saveAll(){
+  if(CLOUD){
+    try{ await sb.from('leads').upsert(LEADS.map(l=>({id:l.id, payload:l, updated_at:new Date().toISOString()}))); updateSaveStatus(); }
+    catch(e){ console.error('saveAll', e); }
+  } else persist();
+}
+async function cloudLoad(){
+  const { data, error } = await sb.from('leads').select('payload').order('updated_at',{ascending:false});
+  if(error){ console.error('cloudLoad', error); return []; }
+  return ensureTouch((data||[]).map(r=>r.payload));
+}
+function updateSaveStatus(){
+  const el=document.getElementById('saveStatus'); if(!el) return;
+  const t=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  el.textContent = CLOUD ? ('☁ Synced · '+t) : ('✓ Saved to this browser · '+t);
+}
+
+/* ============================ STATE ============================ */
+const state = { view:'dashboard', search:'', fOwner:'', fSource:'', fTier:'', selected:null, showAdd:false };
+
+/* ============================ ICONS ============================ */
+const I = {
+  dash:'<path d="M3 13h8V3H3zM13 21h8V3h-8zM3 21h8v-6H3z"/>',
+  pipe:'<path d="M3 6h18M3 12h18M3 18h18"/><circle cx="8" cy="6" r="2.4" fill="#fff"/><circle cx="15" cy="12" r="2.4" fill="#fff"/><circle cx="6" cy="18" r="2.4" fill="#fff"/>',
+  list:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>',
+  money:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/>',
+  trophy:'<path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0zM7 5H4v2a3 3 0 0 0 3 3M17 5h3v2a3 3 0 0 1-3 3"/>',
+  alert:'<path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  flag:'<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>',
+  phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.4 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.4 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/>',
+  add:'<path d="M12 5v14M5 12h14"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+  trash:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+};
+const svg = (p,sw=2)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+
+function columnMark(){return `<svg class="tc-mark" viewBox="0 0 100 116" aria-hidden="true">
+<g fill="none" stroke="var(--gold)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+<line x1="25" y1="10" x2="75" y2="10"/>
+<circle cx="33" cy="26" r="8.5"/><circle cx="67" cy="26" r="8.5"/>
+<line x1="20" y1="39" x2="80" y2="39"/>
+<line x1="50" y1="44" x2="50" y2="100"/>
+<line x1="36" y1="49" x2="36" y2="95"/><line x1="64" y1="49" x2="64" y2="95"/>
+<line x1="43" y1="49" x2="43" y2="95"/><line x1="57" y1="49" x2="57" y2="95"/>
+<line x1="26" y1="106" x2="74" y2="106"/>
+</g>
+<circle cx="33" cy="26" r="2.4" fill="var(--gold)"/><circle cx="67" cy="26" r="2.4" fill="var(--gold)"/>
+</svg>`;}
+
+/* ============================ HELPERS ============================ */
+function filtered(){
+  const q = state.search.trim().toLowerCase();
+  return LEADS.filter(l=>{
+    if(state.fOwner && l.origination!==state.fOwner) return false;
+    if(state.fSource && l.source!==state.fSource) return false;
+    if(state.fTier && l.tier!==state.fTier) return false;
+    if(q){
+      const hay = (l.name+' '+l.company+' '+l.owner+' '+l.origination+' '+l.source).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+function isOverdue(l){ return l.nextStep && new Date(l.nextStep.due) < TODAY && l.stage!=='won'; }
+function tierBadge(t){ const T=TIERS[t]; return `<span class="badge ${T.cls}">${T.label}</span>`; }
+function srcPill(s){ return `<span class="badge pill-src">${s}</span>`; }
+
+/* ============================ NAV ============================ */
+const NAVS = [
+  {id:'dashboard', name:'Dashboard', icon:I.dash, title:'Dashboard', sub:'Lead pipeline overview'},
+  {id:'pipeline',  name:'Pipeline',  icon:I.pipe, title:'Pipeline', sub:'Drag leads across stages'},
+  {id:'leads',     name:'All Leads', icon:I.list, title:'All Leads', sub:'Complete lead list'}
+];
+function renderNav(){
+  document.getElementById('brandLogo').innerHTML = columnMark() + `<div class="brand-text"><div class="b1">Titus</div><div class="b2">CPAs</div></div>`;
+  document.getElementById('mobileBrand').innerHTML = columnMark() + `<div><div class="b1">Titus</div><div class="b2">LEAD TRACKER</div></div>`;
+  const menu = document.getElementById('navMenu');
+  menu.innerHTML = '<div class="nav-label">Sales</div>' + NAVS.map(n=>
+    `<button class="nav-item ${state.view===n.id?'active':''}" data-view="${n.id}"><span style="display:flex">${svg(n.icon)}</span>${n.name}</button>`
+  ).join('');
+  menu.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+  const bn = document.getElementById('bottomNav');
+  bn.innerHTML = NAVS.map(n=>`<button class="bn-item ${state.view===n.id?'active':''}" data-view="${n.id}">${svg(n.icon)}<span>${n.name}</span></button>`).join('')
+    + `<button class="bn-item bn-add" id="bnAdd"><span class="plus">${svg(I.add,2.4)}</span><span>Add</span></button>`;
+  bn.querySelectorAll('.bn-item[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+  document.getElementById('bnAdd').onclick=openAdd;
+}
+function setView(v){ state.view=v; const n=NAVS.find(x=>x.id===v); document.getElementById('pageTitle').textContent=n.title; document.getElementById('pageSub').textContent=n.sub; renderNav(); render(); window.scrollTo(0,0); }
+
+/* ============================ RENDER ============================ */
+function render(){
+  const c = document.getElementById('content');
+  if(state.view==='dashboard') c.innerHTML = viewDashboard();
+  else if(state.view==='pipeline') c.innerHTML = viewPipeline();
+  else c.innerHTML = viewLeads();
+  bindContent();
+}
+
+/* ---- Dashboard ---- */
+function viewDashboard(){
+  const open = LEADS.filter(l=>l.stage!=='won' && l.stage!=='onboarding');
+  const pipelineVal = open.reduce((s,l)=>s+l.value,0);
+  const wonMonth = LEADS.filter(l=>(l.stage==='won'||l.stage==='onboarding'));
+  const wonVal = wonMonth.reduce((s,l)=>s+l.value,0);
+  const overdue = LEADS.filter(isOverdue);
+  const kpis = [
+    {lab:'Open Leads', ic:'ic-navy', icon:I.users, val:open.length, delta:`<b>+4</b> added this week`},
+    {lab:'Pipeline Value', ic:'ic-gold', icon:I.money, val:fmtMoney(pipelineVal), delta:`Weighted across ${open.length} active leads`},
+    {lab:'Won (MTD)', ic:'ic-green', icon:I.trophy, val:wonMonth.length, delta:`${fmtMoney(wonVal)} in new annual fees`},
+    {lab:'Need Follow-Up', ic:'ic-red', icon:I.alert, val:overdue.length, delta:overdue.length?`Overdue next steps`:`All caught up`}
+  ];
+  const kpiHTML = kpis.map(k=>`<div class="kpi"><div class="lab"><span class="ic ${k.ic}">${svg(k.icon)}</span>${k.lab}</div><div class="val">${k.val}</div><div class="delta">${k.delta}</div></div>`).join('');
+
+  // funnel
+  const maxCt = Math.max(...STAGES.map(s=>LEADS.filter(l=>l.stage===s.id).length),1);
+  const funnel = STAGES.map(s=>{
+    const items = LEADS.filter(l=>l.stage===s.id);
+    const ct = items.length; const val = items.reduce((a,b)=>a+b.value,0);
+    const w = Math.max(ct/maxCt*100, ct?9:0);
+    return `<div class="funnel-row"><div class="nm">${s.name}</div><div class="funnel-bar"><div class="funnel-fill" style="width:${w}%">${ct||''}</div></div><div class="ct">${fmtMoney(val)}</div></div>`;
+  }).join('');
+
+  // origination leaderboard (comp infrastructure)
+  const origMax = Math.max(...OWNERS.map(o=>LEADS.filter(l=>l.origination===o).reduce((a,b)=>a+b.value,0)),1);
+  const orig = OWNERS.map(o=>{
+    const items = LEADS.filter(l=>l.origination===o);
+    const val = items.reduce((a,b)=>a+b.value,0);
+    return {o, ct:items.length, val};
+  }).sort((a,b)=>b.val-a.val).map(r=>
+    `<div class="orig-row"><div class="mini-av">${initials(r.o)}</div><div class="nm">${r.o}<div style="font-size:11px;color:var(--muted);font-weight:400">${r.ct} leads originated</div></div><div class="orig-bar"><i style="width:${r.val/origMax*100}%"></i></div><div class="val">${fmtMoney(r.val)}</div></div>`
+  ).join('');
+
+  // needs attention
+  const attn = [...overdue].sort((a,b)=>new Date(a.nextStep.due)-new Date(b.nextStep.due));
+  const attnHTML = attn.length ? attn.map(l=>`
+    <div class="mini-row" data-open="${l.id}" style="cursor:pointer">
+      <div class="mini-av" style="background:var(--danger-bg);color:var(--danger)">${initials(l.name)}</div>
+      <div class="mini-main"><div class="nm">${l.name}</div><div class="sub">${l.nextStep.action}</div></div>
+      <div class="mini-end"><div class="touch overdue">Due ${fmtDate(l.nextStep.due)}</div><div style="font-size:11px;color:var(--muted)">${stageById(l.stage).name}</div></div>
+    </div>`).join('') : `<div class="empty">${svg(I.trophy)}<div>No overdue follow-ups. Nicely done.</div></div>`;
+
+  // recent activity (latest touch across leads)
+  const recent = [...LEADS].sort((a,b)=>new Date(b.lastTouch.date)-new Date(a.lastTouch.date)).slice(0,6).map(l=>`
+    <div class="mini-row" data-open="${l.id}" style="cursor:pointer">
+      <div class="mini-av">${initials(l.name)}</div>
+      <div class="mini-main"><div class="nm">${l.name} · <span style="color:var(--muted);font-weight:500">${l.activities[0].type}</span></div><div class="sub">${l.activities[0].note}</div></div>
+      <div class="mini-end"><div style="font-size:11px;color:var(--muted)">${fmtDate(l.lastTouch.date)}</div></div>
+    </div>`).join('');
+
+  return `
+  <div class="kpi-grid">${kpiHTML}</div>
+  <div class="dash-row">
+    <div class="panel"><div class="panel-head"><h3>Pipeline by Stage</h3><span class="hint">Count · value</span></div><div class="panel-body">${funnel}</div></div>
+    <div class="panel"><div class="panel-head"><h3>Origination Leaderboard</h3><span class="hint">Partner credit</span></div><div class="panel-body">${orig}</div></div>
+  </div>
+  <div class="dash-row">
+    <div class="panel"><div class="panel-head"><h3>Needs Attention</h3><span class="hint">Overdue next steps</span></div><div class="panel-body" style="padding-top:6px;padding-bottom:6px">${attnHTML}</div></div>
+    <div class="panel"><div class="panel-head"><h3>Recent Activity</h3><span class="hint">Last touchpoints</span></div><div class="panel-body" style="padding-top:6px;padding-bottom:6px">${recent}</div></div>
+  </div>`;
+}
+
+/* ---- Pipeline (Kanban) ---- */
+function viewPipeline(){
+  const leads = filtered();
+  const toolbar = `
+  <div class="pipe-toolbar">
+    <select class="filter-sel" id="fOwner"><option value="">All Origination Owners</option>${OWNERS.map(o=>`<option ${state.fOwner===o?'selected':''}>${o}</option>`).join('')}</select>
+    <select class="filter-sel" id="fSource"><option value="">All Sources</option>${SOURCES.map(s=>`<option ${state.fSource===s?'selected':''}>${s}</option>`).join('')}</select>
+    <select class="filter-sel" id="fTier"><option value="">All Tiers</option>${Object.keys(TIERS).map(t=>`<option value="${t}" ${state.fTier===t?'selected':''}>${TIERS[t].label}</option>`).join('')}</select>
+    <div class="spacer" style="flex:1"></div>
+    <span style="font-size:12.5px;color:var(--muted)">${leads.length} leads · ${fmtMoney(leads.reduce((a,b)=>a+b.value,0))}</span>
+  </div>`;
+  const cols = STAGES.map(s=>{
+    const items = leads.filter(l=>l.stage===s.id);
+    const val = items.reduce((a,b)=>a+b.value,0);
+    const cards = items.map(cardHTML).join('') || `<div style="padding:18px 6px;text-align:center;color:#9aa6b4;font-size:12px">Drop here</div>`;
+    return `<div class="col" data-stage="${s.id}">
+      <div class="col-head"><div class="t"><span class="dot" style="background:${s.color}"></span>${s.name}<span class="ct" style="margin-left:auto">${items.length}</span></div><div class="meta"><span>${fmtMoney(val)}</span></div></div>
+      <div class="col-body" data-stage="${s.id}">${cards}</div>
+    </div>`;
+  }).join('');
+  return toolbar + `<div class="board">${cols}</div>`;
+}
+function cardHTML(l){
+  const overdue = isOverdue(l);
+  return `<div class="card" draggable="true" data-id="${l.id}">
+    <div class="ch"><div><div class="nm">${l.name}</div><div class="co">${l.company}</div></div>${tierBadge(l.tier)}</div>
+    <div class="row2"><span class="val">${fmtMoney(l.value)}</span><span style="flex:1"></span>${srcPill(l.source)}</div>
+    <div class="nextstep" style="margin-top:10px">${svg(I.flag,2.2)}<span>${l.nextStep.action.replace('OVERDUE: ','')}</span></div>
+    <div class="foot">
+      <div class="touch ${overdue?'overdue':''}">${svg(I.clock,2)} ${overdue?'Overdue':fmtDate(l.lastTouch.date)}</div>
+      <div class="owner-chip" title="Originated by ${l.origination}">${initials(l.origination)}</div>
+    </div>
+  </div>`;
+}
+
+/* ---- Leads table ---- */
+function viewLeads(){
+  const leads = filtered().sort((a,b)=>stageIndex(a.stage)-stageIndex(b.stage));
+  const toolbar = `
+  <div class="pipe-toolbar">
+    <select class="filter-sel" id="fOwner"><option value="">All Origination Owners</option>${OWNERS.map(o=>`<option ${state.fOwner===o?'selected':''}>${o}</option>`).join('')}</select>
+    <select class="filter-sel" id="fSource"><option value="">All Sources</option>${SOURCES.map(s=>`<option ${state.fSource===s?'selected':''}>${s}</option>`).join('')}</select>
+    <select class="filter-sel" id="fTier"><option value="">All Tiers</option>${Object.keys(TIERS).map(t=>`<option value="${t}" ${state.fTier===t?'selected':''}>${TIERS[t].label}</option>`).join('')}</select>
+    <div class="spacer" style="flex:1"></div>
+    <span style="font-size:12.5px;color:var(--muted)">${leads.length} leads</span>
+  </div>`;
+  if(!leads.length) return toolbar + `<div class="table-wrap"><div class="empty">${svg(I.list)}<div>No leads match these filters.</div></div></div>`;
+  const rows = leads.map(l=>{
+    const s = stageById(l.stage); const overdue=isOverdue(l);
+    return `<tr data-id="${l.id}">
+      <td><div class="t-name">${l.name}</div><div class="t-co">${l.company}</div></td>
+      <td>${tierBadge(l.tier)}</td>
+      <td><span class="stage-tag"><span class="dot" style="background:${s.color}"></span>${s.name}</span></td>
+      <td style="font-family:'Fraunces',serif;font-weight:600;color:var(--navy)">${fmtMoney(l.value)}</td>
+      <td>${srcPill(l.source)}<div style="font-size:11px;color:var(--muted);margin-top:3px">${l.referredBy!=='—'?'via '+l.referredBy:''}</div></td>
+      <td><div style="display:flex;align-items:center;gap:7px"><span class="owner-chip">${initials(l.origination)}</span>${l.origination}</div></td>
+      <td class="${overdue?'':''}"><span class="touch ${overdue?'overdue':''}">${overdue?'Overdue '+fmtDate(l.nextStep.due):fmtDate(l.lastTouch.date)}</span></td>
+    </tr>`;
+  }).join('');
+  return toolbar + `<div class="table-wrap"><table>
+    <thead><tr><th>Lead</th><th>Tier</th><th>Stage</th><th>Est. Annual</th><th>Source</th><th>Origination</th><th>Last / Next</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+/* ============================ BIND ============================ */
+function bindContent(){
+  document.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openDrawer(+el.dataset.open));
+  document.querySelectorAll('tbody tr[data-id]').forEach(tr=>tr.onclick=()=>openDrawer(+tr.dataset.id));
+  ['fOwner','fSource','fTier'].forEach(id=>{ const el=document.getElementById(id); if(el) el.onchange=e=>{ state[id]=e.target.value; render(); }; });
+  // kanban cards
+  document.querySelectorAll('.card[data-id]').forEach(card=>{
+    card.onclick=e=>{ if(!card.classList.contains('dragging')) openDrawer(+card.dataset.id); };
+    card.ondragstart=e=>{ dragId=+card.dataset.id; card.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; };
+    card.ondragend=()=>{ card.classList.remove('dragging'); document.querySelectorAll('.col').forEach(c=>c.classList.remove('drop-on')); };
+  });
+  document.querySelectorAll('.col-body').forEach(col=>{
+    const colEl = col.closest('.col');
+    col.ondragover=e=>{ e.preventDefault(); colEl.classList.add('drop-on'); };
+    col.ondragleave=()=>colEl.classList.remove('drop-on');
+    col.ondrop=e=>{ e.preventDefault(); colEl.classList.remove('drop-on'); moveStage(dragId, col.dataset.stage); };
+  });
+}
+let dragId=null;
+function moveStage(id, stage){
+  const l = LEADS.find(x=>x.id===id); if(!l || l.stage===stage) return;
+  const from = stageById(l.stage).name, to = stageById(stage).name;
+  l.stage = stage;
+  l.activities.unshift({date:'2026-06-13', type:'Stage', note:`Moved from ${from} to ${to}.`, by:CURRENT_USER});
+  l.lastTouch={date:'2026-06-13', type:'Stage'};
+  saveLead(l); render();
+}
+
+/* ============================ DRAWER ============================ */
+function openDrawer(id){
+  state.selected = id;
+  const l = LEADS.find(x=>x.id===id);
+  if(!l){ closeDrawer(); return; }
+  const s = stageById(l.stage);
+  const stagePick = STAGES.map(st=>`<button class="${st.id===l.stage?'on':''}" data-stage="${st.id}">${st.name}</button>`).join('');
+  const tl = l.activities.map(a=>`
+    <div class="tl-item"><div class="tl-dot">${svg(I.flag,2.4)}</div>
+      <div class="h"><span class="ty">${a.type}</span><span class="dt">${fmtDate(a.date)}</span></div>
+      <div class="nt">${a.note}</div><div class="by">${a.by}</div>
+    </div>`).join('');
+  const overdue = isOverdue(l);
+  document.getElementById('drawer').innerHTML = `
+    <div class="dr-head">
+      <div class="top"><div><div class="nm">${l.name}</div><div class="co">${l.company}</div></div><button class="dr-close" id="drClose">&times;</button></div>
+      <div class="dr-badges">${tierBadge(l.tier)}<span class="badge" style="background:rgba(255,255,255,.14);color:#fff"><span class="dot" style="background:${s.color}"></span>${s.name}</span><span class="badge" style="background:rgba(209,175,68,.18);color:var(--gold-soft)">${fmtMoney(l.value)}/yr</span></div>
+    </div>
+    <div class="dr-body">
+      <div class="nextbox">
+        <div class="l">${svg(I.flag,2.4)} Next Step ${overdue?'· <span style="color:var(--danger)">OVERDUE</span>':''}</div>
+        <div class="act">${l.nextStep.action.replace('OVERDUE: ','')}</div>
+        <div class="due">Due ${new Date(l.nextStep.due).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+      </div>
+
+      <div class="sect-title">Lead Details</div>
+      <div class="dr-grid">
+        <div class="field"><div class="l">Lead Source</div><div class="v">${l.source}</div></div>
+        <div class="field"><div class="l">Referred By</div><div class="v">${l.referredBy}</div></div>
+        <div class="field"><div class="l">Origination Owner</div><div class="v" style="display:flex;align-items:center;gap:7px"><span class="owner-chip">${initials(l.origination)}</span>${l.origination}</div></div>
+        <div class="field"><div class="l">Assigned To</div><div class="v">${l.owner}</div></div>
+        <div class="field"><div class="l">Email</div><div class="v"><a href="mailto:${l.email}">${l.email}</a></div></div>
+        <div class="field"><div class="l">Phone</div><div class="v">${l.phone}</div></div>
+        <div class="field"><div class="l">Client Tier</div><div class="v">${TIERS[l.tier].label} — ${TIERS[l.tier].desc}</div></div>
+        <div class="field"><div class="l">Lead Created</div><div class="v">${fmtDate(l.created)} (${daysAgo(l.created)}d ago)</div></div>
+      </div>
+
+      <div class="sect-title">Move Stage</div>
+      <div class="stage-pick" id="stagePick">${stagePick}</div>
+
+      <div class="sect-title">Log a Touchpoint</div>
+      <div class="logbox">
+        <div class="lr">
+          <select id="logType"><option>Call</option><option>Email</option><option>Meeting</option><option>Note</option><option>Proposal</option><option>Signed</option></select>
+          <input id="logNext" placeholder="Set next step (optional)" />
+        </div>
+        <textarea id="logNote" placeholder="What happened? Add a note…"></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:9px"><button class="btn btn-navy" id="logSave">${svg(I.add,2.2)} Log Touchpoint</button></div>
+      </div>
+
+      <div class="sect-title">Activity Timeline</div>
+      <div class="timeline">${tl}</div>
+    </div>`;
+  document.getElementById('drClose').onclick=closeDrawer;
+  document.getElementById('stagePick').querySelectorAll('button').forEach(b=>b.onclick=()=>{ moveStage(id,b.dataset.stage); openDrawer(id); });
+  document.getElementById('logSave').onclick=()=>{
+    const type=document.getElementById('logType').value;
+    const note=document.getElementById('logNote').value.trim()||`${type} logged.`;
+    const next=document.getElementById('logNext').value.trim();
+    l.activities.unshift({date:'2026-06-13',type,note,by:CURRENT_USER});
+    l.lastTouch={date:'2026-06-13',type};
+    if(next) l.nextStep={action:next, due:'2026-06-20'};
+    if(type==='Signed' && l.stage!=='won' && l.stage!=='onboarding') l.stage='won';
+    saveLead(l); render(); openDrawer(id);
+  };
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('drawer').classList.add('show');
+}
+function closeDrawer(){ document.getElementById('overlay').classList.remove('show'); document.getElementById('drawer').classList.remove('show'); state.selected=null; }
+
+/* ============================ ADD MODAL ============================ */
+function openAdd(){
+  document.getElementById('modal').innerHTML = `
+    <div class="modal-card">
+      <div class="modal-head"><h3>New Lead</h3><button class="dr-close" id="mClose" style="color:var(--muted)">&times;</button></div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div><label>Contact Name *</label><input id="a_name" placeholder="Jane Smith" /></div>
+          <div><label>Company</label><input id="a_company" placeholder="Smith Industries" /></div>
+          <div><label>Email</label><input id="a_email" placeholder="jane@company.com" /></div>
+          <div><label>Phone</label><input id="a_phone" placeholder="(205) 555-0000" /></div>
+          <div><label>Client Tier</label><select id="a_tier"><option value="I">Tier I — Business anchor</option><option value="II">Tier II — Personal w/ potential</option><option value="III">Tier III — Simple personal</option></select></div>
+          <div><label>Est. Annual Fees</label><input id="a_value" type="number" placeholder="25000" /></div>
+          <div><label>Lead Source</label><select id="a_source">${SOURCES.map(s=>`<option>${s}</option>`).join('')}</select></div>
+          <div><label>Referred By</label><input id="a_ref" placeholder="Name / firm (optional)" /></div>
+          <div><label>Origination Owner *</label><select id="a_orig">${OWNERS.map(o=>`<option>${o}</option>`).join('')}</select></div>
+          <div><label>Assigned To</label><select id="a_owner">${OWNERS.map(o=>`<option>${o}</option>`).join('')}</select></div>
+          <div class="fg-full"><label>First Next Step</label><input id="a_next" placeholder="e.g. Book discovery call" /></div>
+        </div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-ghost" id="mCancel">Cancel</button><button class="btn btn-gold" id="mSave">Add Lead</button></div>
+    </div>`;
+  const m=document.getElementById('modal'); m.classList.add('show');
+  document.getElementById('mClose').onclick=closeAdd;
+  document.getElementById('mCancel').onclick=closeAdd;
+  document.getElementById('mSave').onclick=saveAdd;
+}
+function closeAdd(){ document.getElementById('modal').classList.remove('show'); }
+function saveAdd(){
+  const v=id=>document.getElementById(id).value.trim();
+  const name=v('a_name'); if(!name){ document.getElementById('a_name').focus(); document.getElementById('a_name').style.borderColor='var(--danger)'; return; }
+  const id=Date.now();
+  const lead={id, name, company:v('a_company')||'—', email:v('a_email')||'—', phone:v('a_phone')||'—',
+    tier:v('a_tier'), stage:'new', value:+v('a_value')||0, source:v('a_source'), referredBy:v('a_ref')||'—',
+    origination:v('a_orig'), owner:v('a_owner'), created:'2026-06-13',
+    nextStep:{action:v('a_next')||'Initial outreach', due:'2026-06-16'},
+    activities:[{date:'2026-06-13', type:'Note', note:'Lead created.', by:CURRENT_USER}], lastTouch:{date:'2026-06-13',type:'Note'}};
+  LEADS.unshift(lead); saveLead(lead); closeAdd(); render();
+  if(state.view==='dashboard'){ setView('pipeline'); }
+  setTimeout(()=>openDrawer(id),120);
+}
+
+/* ============================ DATA / BACKUP ============================ */
+function openData(){
+  const count = LEADS.length;
+  document.getElementById('modal').innerHTML = `
+    <div class="modal-card" style="width:460px">
+      <div class="modal-head"><h3>Data &amp; Backup</h3><button class="dr-close" id="dClose" style="color:var(--muted)">&times;</button></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:#54627a;line-height:1.5;margin-bottom:16px">Your ${count} leads are saved automatically to <b>this browser on this device</b>. They are not on a server and won't sync to other devices. Export a backup regularly — clearing browser data will erase them.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button class="btn btn-navy" id="dExport" style="justify-content:flex-start;padding:12px 14px">${svg(I.download,2)} Export backup (.json)</button>
+          <button class="btn btn-ghost" id="dImport" style="justify-content:flex-start;padding:12px 14px">${svg(I.upload,2)} Import / restore from file</button>
+          <button class="btn btn-ghost" id="dReset" style="justify-content:flex-start;padding:12px 14px;color:var(--danger);border-color:#f0d3d0">${svg(I.trash,2)} Reset to sample data</button>
+        </div>
+        <input type="file" id="dFile" accept="application/json,.json" style="display:none" />
+        <div id="dMsg" style="font-size:12.5px;color:var(--good);margin-top:14px;min-height:16px"></div>
+      </div>
+    </div>`;
+  document.getElementById('modal').classList.add('show');
+  document.getElementById('dClose').onclick=closeAdd;
+  const msg=(t,ok=true)=>{ const m=document.getElementById('dMsg'); m.style.color=ok?'var(--good)':'var(--danger)'; m.textContent=t; };
+  document.getElementById('dExport').onclick=()=>{
+    const blob=new Blob([JSON.stringify(LEADS,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='titus-leads-'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+    URL.revokeObjectURL(a.href); msg('Backup downloaded.');
+  };
+  document.getElementById('dImport').onclick=()=>document.getElementById('dFile').click();
+  document.getElementById('dFile').onchange=e=>{
+    const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+    r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!Array.isArray(d)||!d.length) throw 0;
+      LEADS=ensureTouch(d); closeDrawer(); saveAll(); render(); msg('Imported '+d.length+' leads.');
+    }catch(err){ msg('That file could not be read as a valid backup.',false); } };
+    r.readAsText(f);
+  };
+  document.getElementById('dReset').onclick=()=>{
+    if(confirm('Reset to the original sample data? This erases your current leads in this browser (export a backup first if needed).')){
+      LEADS=ensureTouch(JSON.parse(JSON.stringify(SEED_LEADS))); closeDrawer(); saveAll(); render(); msg('Reset to sample data.');
+    }
+  };
+}
+
+/* ============================ EVENTS ============================ */
+document.getElementById('overlay').onclick=closeDrawer;
+document.getElementById('modal').onclick=e=>{ if(e.target.id==='modal') closeAdd(); };
+document.getElementById('addBtnTop').onclick=openAdd;
+document.getElementById('dataBtnTop').onclick=openData;
+document.getElementById('dataBtnM').onclick=openData;
+const syncSearch=v=>{ state.search=v; render(); };
+document.getElementById('searchInput').oninput=e=>{ document.getElementById('searchInputM').value=e.target.value; syncSearch(e.target.value); };
+document.getElementById('searchInputM').oninput=e=>{ document.getElementById('searchInput').value=e.target.value; syncSearch(e.target.value); };
+document.getElementById('mSearchBtn').onclick=()=>document.getElementById('mSearchBar').classList.toggle('open');
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeDrawer(); closeAdd(); }});
+
+/* ============================ INIT / AUTH ============================ */
+renderNav();
+document.getElementById('loginMark').innerHTML = columnMark();
+
+if(CLOUD){
+  setupAuthUI();
+  initCloud();
+} else {
+  LEADS = ensureTouch(loadLeads());
+  render();
+  updateSaveStatus();
+}
+
+async function initCloud(){
+  try{
+    const { data } = await sb.auth.getSession();
+    SESSION = data.session;
+    sb.auth.onAuthStateChange((_e, s)=>{ SESSION=s; if(s) enterApp(); else showLogin(); });
+    if(SESSION) enterApp(); else showLogin();
+  }catch(e){ console.error('initCloud', e); showLogin(); }
+}
+function showLogin(){ document.getElementById('login').classList.add('show'); }
+function hideLogin(){ document.getElementById('login').classList.remove('show'); }
+let _rtBound=false;
+async function enterApp(){
+  hideLogin();
+  CURRENT_USER = niceName(SESSION && SESSION.user ? SESSION.user.email : 'Team Member');
+  setUserBadge();
+  const b=document.getElementById('cloudBanner'); if(b){ b.style.display='block'; b.textContent='☁ Shared cloud mode — synced across your team'; }
+  LEADS = await cloudLoad();
+  if(!LEADS.length){ LEADS = ensureTouch(JSON.parse(JSON.stringify(SEED_LEADS))); await saveAll(); }
+  render(); updateSaveStatus();
+  if(!_rtBound){ subscribeRealtime(); _rtBound=true; }
+}
+function setupAuthUI(){
+  const btn=document.getElementById('loginBtn');
+  btn.onclick=async ()=>{
+    const email=document.getElementById('loginEmail').value.trim();
+    const msg=document.getElementById('loginMsg');
+    if(!email||!email.includes('@')){ msg.style.color='var(--danger)'; msg.textContent='Enter a valid work email.'; return; }
+    btn.textContent='Sending…'; btn.disabled=true;
+    try{
+      const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.href.split('#')[0] } });
+      if(error) throw error;
+      msg.style.color='var(--good)'; msg.textContent='Check your inbox — a secure sign-in link is on its way to '+email+'.';
+    }catch(e){ msg.style.color='var(--danger)'; msg.textContent=e.message||'Could not send link.'; }
+    btn.textContent='Send me a sign-in link'; btn.disabled=false;
+  };
+  document.getElementById('loginEmail').addEventListener('keydown',e=>{ if(e.key==='Enter') btn.click(); });
+}
+function niceName(email){ const n=(email||'').split('@')[0].replace(/[._-]+/g,' ').trim(); return n? n.replace(/\b\w/g,c=>c.toUpperCase()) : 'Team Member'; }
+function setUserBadge(){
+  const av=document.querySelector('.avatar-me'); if(!av) return;
+  av.textContent=initials(CURRENT_USER); av.title=CURRENT_USER+' — click to sign out'; av.style.cursor='pointer';
+  av.onclick=async ()=>{ if(confirm('Sign out of Titus Lead Tracker?')){ try{ await sb.auth.signOut(); }catch(e){} location.reload(); } };
+}
+function subscribeRealtime(){
+  try{
+    sb.channel('leads-rt').on('postgres_changes',{event:'*',schema:'public',table:'leads'}, async ()=>{
+      const sel=state.selected; LEADS=await cloudLoad(); render();
+      if(sel && LEADS.find(l=>l.id===sel)) openDrawer(sel);
+    }).subscribe();
+  }catch(e){ console.error('realtime', e); }
+}
+</script>
+</body>
+</html>
