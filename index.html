@@ -359,7 +359,9 @@ const SUPABASE_URL = 'https://mxvxmpprqgwkujsceybk.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_zR4ghkZypguzB_sX4gFbCw_mZV2lSmH';
 
 const CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
-let sb = CLOUD ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+let sb = CLOUD ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { flowType:'implicit', detectSessionInUrl:true, persistSession:true, autoRefreshToken:true }
+}) : null;
 let SESSION = null;
 let CURRENT_USER = 'Mat Cox';   // overwritten with logged-in user's name in cloud mode
 
