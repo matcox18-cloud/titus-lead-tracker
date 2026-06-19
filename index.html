@@ -290,11 +290,19 @@ tbody tr:last-child td{border-bottom:none}
     <div id="loginMark"></div>
     <h2>Lead Tracker</h2>
     <div class="tag">"We bring the structure. You build the legacy."</div>
-    <label>Work email</label>
-    <input id="loginEmail" type="email" placeholder="you@tituscpa.com" autocomplete="email" />
-    <button class="btn btn-navy" id="loginBtn">Send me a sign-in link</button>
+    <div id="emailStep">
+      <label>Work email</label>
+      <input id="loginEmail" type="email" placeholder="you@tituscpa.com" autocomplete="email" />
+      <button class="btn btn-navy" id="loginBtn">Send me a code</button>
+    </div>
+    <div id="codeStep" style="display:none">
+      <label>Enter the 6-digit code</label>
+      <input id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="● ● ● ● ● ●" style="text-align:center;letter-spacing:6px;font-size:19px" />
+      <button class="btn btn-navy" id="verifyBtn">Verify &amp; sign in</button>
+      <div style="margin-top:12px;font-size:12px;color:var(--muted)"><span id="resendLink" style="cursor:pointer;text-decoration:underline">Use a different email</span></div>
+    </div>
     <div class="login-msg" id="loginMsg"></div>
-    <div class="login-foot">A one-time secure link is emailed to you — no password to remember.</div>
+    <div class="login-foot">A one-time 6-digit code is emailed to you — no password to remember.</div>
   </div>
 </div>
 
@@ -1063,20 +1071,49 @@ async function enterApp(){
   if(!_rtBound){ subscribeRealtime(); _rtBound=true; }
 }
 function setupAuthUI(){
+  const emailStep=document.getElementById('emailStep');
+  const codeStep=document.getElementById('codeStep');
   const btn=document.getElementById('loginBtn');
+  const verifyBtn=document.getElementById('verifyBtn');
+  const msg=document.getElementById('loginMsg');
+  let currentEmail='';
+  const setMsg=(t,ok)=>{ msg.style.color=ok?'var(--good)':'var(--danger)'; msg.textContent=t; };
+
   btn.onclick=async ()=>{
     const email=document.getElementById('loginEmail').value.trim();
-    const msg=document.getElementById('loginMsg');
-    if(!email||!email.includes('@')){ msg.style.color='var(--danger)'; msg.textContent='Enter a valid work email.'; return; }
+    if(!email||!email.includes('@')){ setMsg('Enter a valid work email.',false); return; }
     btn.textContent='Sending…'; btn.disabled=true;
     try{
-      const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.href.split('#')[0] } });
+      const { error } = await sb.auth.signInWithOtp({ email });
       if(error) throw error;
-      msg.style.color='var(--good)'; msg.textContent='Check your inbox — a secure sign-in link is on its way to '+email+'.';
-    }catch(e){ msg.style.color='var(--danger)'; msg.textContent=e.message||'Could not send link.'; }
-    btn.textContent='Send me a sign-in link'; btn.disabled=false;
+      currentEmail=email;
+      emailStep.style.display='none'; codeStep.style.display='block';
+      setMsg('We emailed a 6-digit code to '+email+'. Enter it above.', true);
+      document.getElementById('loginCode').focus();
+    }catch(e){ setMsg(e.message||'Could not send code.',false); }
+    btn.textContent='Send me a code'; btn.disabled=false;
+  };
+
+  verifyBtn.onclick=async ()=>{
+    const token=document.getElementById('loginCode').value.trim();
+    if(!/^\d{6}$/.test(token)){ setMsg('Enter the 6-digit code from your email.',false); return; }
+    verifyBtn.textContent='Verifying…'; verifyBtn.disabled=true;
+    try{
+      let { error } = await sb.auth.verifyOtp({ email: currentEmail, token, type:'email' });
+      if(error){ const r = await sb.auth.verifyOtp({ email: currentEmail, token, type:'signup' }); if(r.error) throw error; }
+      setMsg('Signed in — loading…', true);
+      // onAuthStateChange (SIGNED_IN) calls enterApp()
+    }catch(e){ setMsg(e.message||'That code did not work — check it or request a new one.',false); }
+    verifyBtn.textContent='Verify & sign in'; verifyBtn.disabled=false;
+  };
+
+  document.getElementById('resendLink').onclick=()=>{
+    codeStep.style.display='none'; emailStep.style.display='block';
+    document.getElementById('loginCode').value=''; setMsg('',true);
+    document.getElementById('loginEmail').focus();
   };
   document.getElementById('loginEmail').addEventListener('keydown',e=>{ if(e.key==='Enter') btn.click(); });
+  document.getElementById('loginCode').addEventListener('keydown',e=>{ if(e.key==='Enter') verifyBtn.click(); });
 }
 function niceName(email){ const n=(email||'').split('@')[0].replace(/[._-]+/g,' ').trim(); return n? n.replace(/\b\w/g,c=>c.toUpperCase()) : 'Team Member'; }
 function setUserBadge(){
