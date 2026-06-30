@@ -121,7 +121,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .tier2{background:#faf3dd;color:#a8862a}
 .tier3{background:#ece7da;color:#5a6675}
 .pill-src{background:#efeadf;color:#54627a;border:1px solid #e4e9f0}
-.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 auto;margin-right:7px;vertical-align:middle}
 
 /* ---------- Pipeline / Kanban ---------- */
 .pipe-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
@@ -130,7 +130,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .board{display:flex;gap:14px;overflow-x:auto;padding-bottom:18px;align-items:flex-start}
 .col{width:268px;flex-shrink:0;background:#ece7da;border-radius:13px;display:flex;flex-direction:column;max-height:calc(100vh - 230px)}
 .col-head{padding:13px 14px 10px;position:sticky;top:0}
-.col-head .t{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:var(--navy)}
+.col-head .t{display:flex;align-items:center;font-weight:700;font-size:13px;color:var(--navy)}
 .col-head .meta{display:flex;justify-content:space-between;margin-top:7px;font-size:11.5px;color:var(--muted)}
 .col-head .ct{background:#fff;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;color:var(--navy)}
 .col-body{padding:0 10px 12px;overflow-y:auto;flex:1}
@@ -161,7 +161,7 @@ tbody tr:hover{background:#faf8f2}
 tbody tr:last-child td{border-bottom:none}
 .t-name{font-weight:700;color:var(--ink)}
 .t-co{font-size:11.5px;color:var(--muted)}
-.stage-tag{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12px}
+.stage-tag{display:inline-flex;align-items:center;font-weight:600;font-size:12px}
 
 /* ---------- Drawer ---------- */
 .overlay{position:fixed;inset:0;background:rgba(19,43,73,.45);z-index:50;opacity:0;pointer-events:none;transition:.2s}
@@ -206,7 +206,7 @@ tbody tr:last-child td{border-bottom:none}
 .tl-item .by{font-size:11px;color:var(--muted);margin-top:3px}
 
 .logbox{background:#faf8f2;border:1px solid var(--line);border-radius:11px;padding:14px;margin-top:6px}
-.logbox .lr{display:flex;gap:8px;margin-bottom:9px}
+.logbox .lr{display:flex;gap:8px;margin-bottom:9px;flex-wrap:wrap}
 .logbox select,.logbox input,.logbox textarea{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
 .logbox textarea{resize:vertical;min-height:54px;width:100%}
 .logbox select:focus,.logbox input:focus,.logbox textarea:focus{outline:none;border-color:var(--gold)}
@@ -393,16 +393,19 @@ const stageById = id => STAGES.find(s=>s.id===id);
 const stageIndex = id => STAGES.findIndex(s=>s.id===id);
 
 const OWNERS = ['Mat Cox','Sam Bellman','Hudson Pitts','Tim Pitts'];
-const SOURCES = ['Client Referral','COI / Referral Partner','Existing Client Expansion','Website','LinkedIn','Networking Event','Google Search'];
+const SOURCES = ['Client Referral','COI / Referral Partner','Existing Client Expansion','Paid Ads (Meta / Google)','Website','LinkedIn','Networking Event','Google Search'];
 const TIERS = {
   'I':  {cls:'tier1', label:'Tier I',   desc:'Business owner anchor'},
   'II': {cls:'tier2', label:'Tier II',  desc:'Personal w/ business potential'},
   'III':{cls:'tier3', label:'Tier III', desc:'Simple personal tax'}
 };
 const initials = n => n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-const TODAY = new Date('2026-06-13');
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const isoDate = d => { const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); };
+const TODAY_ISO = isoDate(TODAY);
+const plusDays = n => { const d=new Date(); d.setDate(d.getDate()+n); return isoDate(d); };
 const daysAgo = d => Math.round((TODAY - new Date(d))/86400000);
-const fmtDate = d => new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+const fmtDate = d => new Date(/^\d{4}-\d{2}-\d{2}$/.test(d)?d+'T00:00:00':d).toLocaleDateString('en-US',{month:'short',day:'numeric'});
 const fmtMoney = n => '$'+n.toLocaleString();
 
 const SEED_LEADS = [
@@ -493,6 +496,9 @@ const SEED_LEADS = [
      {date:'2026-06-12', type:'Note', note:'LinkedIn inbound. 1099 consultant going S-corp.', by:'Mat Cox'}
    ]}
 ];
+
+// Keep sample next-step due dates current relative to today (a few overdue, most upcoming)
+(function(){ const off=[-3,-1,0,1,2,2,3,4,5,1,-2,6,3,0]; SEED_LEADS.forEach((l,i)=>{ if(l.nextStep) l.nextStep.due=plusDays(off[i%off.length]); }); })();
 
 // ---- persistence (local + cloud) ----
 const STORE_KEY = 'titus_leads_v1';
@@ -598,7 +604,7 @@ function filtered(){
     return true;
   });
 }
-function isOverdue(l){ return l.nextStep && new Date(l.nextStep.due) < TODAY && l.stage!=='won' && l.stage!=='lost'; }
+function isOverdue(l){ return l.nextStep && l.nextStep.due && l.nextStep.due < TODAY_ISO && l.stage!=='won' && l.stage!=='lost'; }
 function tierBadge(t){ const T=TIERS[t]; return `<span class="badge ${T.cls}">${T.label}</span>`; }
 function srcPill(s){ return `<span class="badge pill-src">${s}</span>`; }
 
@@ -848,8 +854,8 @@ function moveStage(id, stage){
   const l = LEADS.find(x=>x.id===id); if(!l || l.stage===stage) return;
   const from = stageById(l.stage).name, to = stageById(stage).name;
   l.stage = stage;
-  l.activities.unshift({date:'2026-06-13', type:'Stage', note:`Moved from ${from} to ${to}.`, by:CURRENT_USER});
-  l.lastTouch={date:'2026-06-13', type:'Stage'};
+  l.activities.unshift({date:TODAY_ISO, type:'Stage', note:`Moved from ${from} to ${to}.`, by:CURRENT_USER});
+  l.lastTouch={date:TODAY_ISO, type:'Stage'};
   saveLead(l); render();
 }
 
@@ -875,7 +881,7 @@ function openDrawer(id){
       <div class="nextbox">
         <div class="l">${svg(I.flag,2.4)} Next Step ${overdue?'· <span style="color:var(--danger)">OVERDUE</span>':''}</div>
         <div class="act">${l.nextStep.action.replace('OVERDUE: ','')}</div>
-        <div class="due">Due ${new Date(l.nextStep.due).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+        <div class="due">${isOverdue(l)?'<span style="color:var(--danger);font-weight:700">Overdue · </span>':''}Due ${new Date(l.nextStep.due+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
       </div>
 
       <div class="sect-title">Lead Details</div>
@@ -898,6 +904,7 @@ function openDrawer(id){
         <div class="lr">
           <select id="logType"><option>Call</option><option>Email</option><option>Meeting</option><option>Note</option><option>Proposal</option><option>Signed</option></select>
           <input id="logNext" placeholder="Set next step (optional)" />
+          <input id="logNextDue" type="date" title="Next step due by" style="flex:0 0 150px" />
         </div>
         <textarea id="logNote" placeholder="What happened? Add a note…"></textarea>
         <div style="display:flex;justify-content:flex-end;margin-top:9px"><button class="btn btn-navy" id="logSave">${svg(I.add,2.2)} Log Touchpoint</button></div>
@@ -921,9 +928,11 @@ function openDrawer(id){
     const type=document.getElementById('logType').value;
     const note=document.getElementById('logNote').value.trim()||`${type} logged.`;
     const next=document.getElementById('logNext').value.trim();
-    l.activities.unshift({date:'2026-06-13',type,note,by:CURRENT_USER});
-    l.lastTouch={date:'2026-06-13',type};
-    if(next) l.nextStep={action:next, due:'2026-06-20'};
+    const nextDue=document.getElementById('logNextDue').value;
+    l.activities.unshift({date:TODAY_ISO,type,note,by:CURRENT_USER});
+    l.lastTouch={date:TODAY_ISO,type};
+    if(next) l.nextStep={action:next, due:nextDue||plusDays(7)};
+    else if(nextDue && l.nextStep) l.nextStep.due=nextDue;
     if(type==='Signed' && l.stage!=='won' && l.stage!=='onboarding') l.stage='won';
     saveLead(l); render(); openDrawer(id);
   };
@@ -949,7 +958,8 @@ function openAdd(){
           <div><label>Referred By</label><input id="a_ref" placeholder="Name / firm (optional)" /></div>
           <div><label>Origination Owner *</label><select id="a_orig">${OWNERS.map(o=>`<option>${o}</option>`).join('')}</select></div>
           <div><label>Assigned To</label><select id="a_owner">${OWNERS.map(o=>`<option>${o}</option>`).join('')}</select></div>
-          <div class="fg-full"><label>First Next Step</label><input id="a_next" placeholder="e.g. Book discovery call" /></div>
+          <div><label>First Next Step</label><input id="a_next" placeholder="e.g. Book discovery call" /></div>
+          <div><label>Next Step Due By</label><input id="a_nextdue" type="date" /></div>
         </div>
       </div>
       <div class="modal-foot"><button class="btn btn-ghost" id="mCancel">Cancel</button><button class="btn btn-gold" id="mSave">Add Lead</button></div>
@@ -966,9 +976,9 @@ function saveAdd(){
   const id=Date.now();
   const lead={id, name, company:v('a_company')||'—', email:v('a_email')||'—', phone:v('a_phone')||'—',
     tier:v('a_tier'), stage:'new', value:+v('a_value')||0, source:v('a_source'), referredBy:v('a_ref')||'—',
-    origination:v('a_orig'), owner:v('a_owner'), created:'2026-06-13',
-    nextStep:{action:v('a_next')||'Initial outreach', due:'2026-06-16'},
-    activities:[{date:'2026-06-13', type:'Note', note:'Lead created.', by:CURRENT_USER}], lastTouch:{date:'2026-06-13',type:'Note'}};
+    origination:v('a_orig'), owner:v('a_owner'), created:TODAY_ISO,
+    nextStep:{action:v('a_next')||'Initial outreach', due:v('a_nextdue')||plusDays(7)},
+    activities:[{date:TODAY_ISO, type:'Note', note:'Lead created.', by:CURRENT_USER}], lastTouch:{date:TODAY_ISO,type:'Note'}};
   LEADS.unshift(lead); saveLead(lead); closeAdd(); render();
   if(state.view==='dashboard'){ setView('pipeline'); }
   setTimeout(()=>openDrawer(id),120);
