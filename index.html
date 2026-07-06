@@ -281,6 +281,18 @@ tbody tr:last-child td{border-bottom:none}
 .brand-logo{height:30px;width:auto;max-width:170px;display:block}
 .brand-logo-m{height:26px;width:auto;display:block}
 .login-logo{width:220px;max-width:78%;height:auto;display:block;margin:0 auto 10px}
+.roster-add{display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.roster-add input,.roster-add select{padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#fbfcfd;font-size:14px}
+.roster-add input{flex:1;min-width:180px}
+.roster-add input:focus,.roster-add select:focus{outline:none;border-color:var(--gold);background:#fff}
+.roster-list{display:flex;flex-direction:column}
+.roster-row{display:flex;align-items:center;gap:11px;padding:10px 2px;border-bottom:1px solid #f0f2f5}
+.roster-row:last-child{border-bottom:none}
+.roster-main{flex:1}
+.roster-main .nm{font-weight:600;font-size:14px;color:var(--ink)}
+.roster-main .sub{font-size:12px;color:var(--muted)}
+.roster-del{background:none;border:1px solid transparent;color:var(--muted);border-radius:8px;padding:6px;cursor:pointer;display:flex}
+.roster-del:hover{color:var(--danger);border-color:#f0d3d0;background:#fdf5f4}
 </style>
 </head>
 <body>
@@ -377,6 +389,7 @@ let sb = CLOUD ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 }) : null;
 let SESSION = null;
 let CURRENT_USER = 'Mat Cox';   // overwritten with logged-in user's name in cloud mode
+let CURRENT_EMAIL = '';         // logged-in user's email (cloud mode) — drives admin gate
 
 /* ============================ DATA ============================ */
 const STAGES = [
@@ -392,7 +405,25 @@ const STAGES = [
 const stageById = id => STAGES.find(s=>s.id===id);
 const stageIndex = id => STAGES.findIndex(s=>s.id===id);
 
-const OWNERS = ['Mat Cox','Sam Bellman','Hudson Pitts','Tim Pitts'];
+// Team roster (managed in the Admin tab; synced via the cloud "settings" table).
+const DEFAULT_ROSTER = [
+  {name:'Mat Cox', role:'Partner'},
+  {name:'Sam Bellman', role:'Partner'},
+  {name:'Tim Pitts', role:'Partner'},
+  {name:'Hudson Pitts', role:'Team Leader'},
+  {name:'Greg Roberson', role:'Senior Manager'},
+  {name:'Brian Krebs', role:'Senior Manager'},
+  {name:'Chris Self', role:'Senior Manager'},
+  {name:'Claire Owens', role:'Accounting Manager'},
+  {name:'Braxton Bonner', role:'Staff Accountant'},
+  {name:'Jennifer Crosby', role:'Office Manager'}
+];
+let ROSTER = DEFAULT_ROSTER.map(r=>({...r}));
+let OWNERS = ROSTER.map(r=>r.name);
+function refreshOwners(){ OWNERS = ROSTER.map(r=>r.name); }
+// Admins (can see/manage the Admin tab). Client-side gate; roster table also RLS-limited.
+const ADMIN_EMAILS = ['mat@titusandcompany.com','sam@titusandcompany.com','mcox@tituscpa.com','sbellman@tituscpa.com','matcox18@gmail.com'];
+function isAdmin(){ return !CLOUD || ADMIN_EMAILS.includes((CURRENT_EMAIL||'').toLowerCase()); }
 const SOURCES = ['Client Referral','COI / Referral Partner','Existing Client Expansion','Paid Ads (Meta / Google)','Website','LinkedIn','Networking Event','Google Search'];
 const TIERS = {
   'I':  {cls:'tier1', label:'Tier I',   desc:'Business owner anchor'},
@@ -530,6 +561,26 @@ async function cloudLoad(){
   if(error){ console.error('cloudLoad', error); return []; }
   return ensureTouch((data||[]).map(r=>r.payload));
 }
+// Roster (team members) — stored in the cloud "settings" table under key 'roster'.
+async function loadRoster(){
+  if(!CLOUD){ refreshOwners(); return; }
+  try{
+    const { data, error } = await sb.from('settings').select('payload').eq('key','roster').maybeSingle();
+    if(error){ console.error('loadRoster', error); return; }
+    if(data && Array.isArray(data.payload) && data.payload.length){
+      ROSTER = data.payload.map(r=>({name:r.name, role:r.role||''}));
+      refreshOwners();
+    } else {
+      await saveRoster(); // first run — seed the default roster into the cloud
+    }
+  }catch(e){ console.error('loadRoster', e); }
+}
+async function saveRoster(){
+  refreshOwners();
+  if(!CLOUD) return;
+  try{ await sb.from('settings').upsert({key:'roster', payload:ROSTER, updated_at:new Date().toISOString()}); updateSaveStatus(); }
+  catch(e){ console.error('saveRoster', e); }
+}
 // Delete a single lead.
 async function deleteLead(id){
   LEADS = LEADS.filter(l=>l.id!==id);
@@ -621,6 +672,8 @@ function renderNav(){
   menu.innerHTML = '<div class="nav-label">Sales</div>' + NAVS.map(n=>
     `<button class="nav-item ${state.view===n.id?'active':''}" data-view="${n.id}"><span style="display:flex">${svg(n.icon)}</span>${n.name}</button>`
   ).join('')
+  + (isAdmin() ? '<div class="nav-label" style="margin-top:10px">Admin</div>'
+      + `<button class="nav-item ${state.view==='admin'?'active':''}" data-view="admin"><span style="display:flex">${svg(I.gear)}</span>Team &amp; Originators</button>` : '')
   + '<div class="nav-label" style="margin-top:10px">Resources</div>'
   + `<button class="nav-item ${state.view==='help'?'active':''}" data-view="help"><span style="display:flex">${svg(I.book)}</span>Instructions</button>`;
   menu.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>setView(b.dataset.view));
@@ -630,14 +683,16 @@ function renderNav(){
   bn.querySelectorAll('.bn-item[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
   document.getElementById('bnAdd').onclick=openAdd;
 }
-function setView(v){ state.view=v; const n=NAVS.find(x=>x.id===v)||{title:'Instructions',sub:'How to use the Lead Tracker'}; document.getElementById('pageTitle').textContent=n.title; document.getElementById('pageSub').textContent=n.sub; renderNav(); render(); window.scrollTo(0,0); }
+function setView(v){ state.view=v; const meta = v==='admin' ? {title:'Team & Originators', sub:'Manage the roster and see who\'s bringing in business'} : (v==='help' ? {title:'Instructions', sub:'How to use the Lead Tracker'} : (NAVS.find(x=>x.id===v)||{title:'',sub:''})); document.getElementById('pageTitle').textContent=meta.title; document.getElementById('pageSub').textContent=meta.sub; renderNav(); render(); window.scrollTo(0,0); }
 
 /* ============================ RENDER ============================ */
 function render(){
   const c = document.getElementById('content');
+  if(state.view==='admin' && !isAdmin()) state.view='dashboard';
   if(state.view==='dashboard') c.innerHTML = viewDashboard();
   else if(state.view==='pipeline') c.innerHTML = viewPipeline();
   else if(state.view==='help') c.innerHTML = viewHelp();
+  else if(state.view==='admin') c.innerHTML = viewAdmin();
   else c.innerHTML = viewLeads();
   bindContent();
 }
@@ -785,6 +840,60 @@ function viewLeads(){
     <tbody>${rows}</tbody></table></div>`;
 }
 
+/* ---- Admin: team roster + originator scoreboard ---- */
+function originatorStats(name){
+  const items = LEADS.filter(l=>l.origination===name);
+  const won = items.filter(l=>l.stage==='won'||l.stage==='onboarding');
+  const lost = items.filter(l=>l.stage==='lost');
+  const open = items.filter(l=>l.stage!=='won'&&l.stage!=='onboarding'&&l.stage!=='lost');
+  const closed = won.length+lost.length;
+  return { count:items.length, openVal:open.reduce((a,b)=>a+b.value,0), wonVal:won.reduce((a,b)=>a+b.value,0), wonCt:won.length, winRate: closed?Math.round(won.length/closed*100):null };
+}
+function viewAdmin(){
+  if(!isAdmin()) return `<div class="empty">Admin access only.</div>`;
+  const rosterRows = ROSTER.map((r,i)=>`
+    <div class="roster-row">
+      <div class="mini-av">${initials(r.name)}</div>
+      <div class="roster-main"><div class="nm">${r.name}</div><div class="sub">${r.role||'—'}</div></div>
+      <button class="roster-del" data-del="${i}" title="Remove ${r.name}">${svg(I.trash,2)}</button>
+    </div>`).join('') || `<div class="empty">No one on the roster yet.</div>`;
+  const roleOpts = ['Partner','Team Leader','Senior Manager','Accounting Manager','Staff Accountant','Office Manager','Team Member'].map(o=>`<option>${o}</option>`).join('');
+  const board = ROSTER.map(r=>({r, s:originatorStats(r.name)})).sort((a,b)=> b.s.wonVal-a.s.wonVal || b.s.count-a.s.count);
+  const boardRows = board.map(({r,s})=>`
+    <tr>
+      <td><div style="display:flex;align-items:center;gap:9px"><span class="mini-av" style="width:30px;height:30px;font-size:11px">${initials(r.name)}</span><div><div class="t-name">${r.name}</div><div class="t-co">${r.role||''}</div></div></div></td>
+      <td style="text-align:center">${s.count}</td>
+      <td style="text-align:right">${fmtMoney(s.openVal)}</td>
+      <td style="text-align:right;font-family:'Adamina',serif;font-weight:600;color:var(--navy)">${fmtMoney(s.wonVal)}</td>
+      <td style="text-align:center">${s.winRate===null?'<span style="color:var(--muted)">—</span>':s.winRate+'%'}</td>
+    </tr>`).join('');
+  return `
+  <div class="panel" style="margin-bottom:18px">
+    <div class="panel-head"><h3>Team Roster</h3><span class="hint">${ROSTER.length} people · everyone is selectable as an originator</span></div>
+    <div class="panel-body">
+      <div class="roster-add">
+        <input id="rosterName" placeholder="Full name (e.g. Jordan Lee)" />
+        <select id="rosterRole">${roleOpts}</select>
+        <button class="btn btn-gold" id="rosterAdd">${svg(I.add,2.4)} Add</button>
+      </div>
+      <div id="rosterMsg" style="font-size:12.5px;color:var(--good);min-height:16px;margin:4px 2px 10px"></div>
+      <div class="roster-list">${rosterRows}</div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h3>Originator Scoreboard</h3><span class="hint">Who's bringing in business</span></div>
+    <div class="panel-body">
+      <div class="table-wrap" style="border:none;box-shadow:none">
+        <table>
+          <thead><tr><th>Originator</th><th style="text-align:center">Leads</th><th style="text-align:right">Open pipeline</th><th style="text-align:right">Won (annual fees)</th><th style="text-align:center">Win rate</th></tr></thead>
+          <tbody>${boardRows}</tbody>
+        </table>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:10px">Win rate = won ÷ (won + lost). "Won" counts leads in Closed Won or Onboarding. Credit follows the "Origination Owner" set on each lead.</div>
+    </div>
+  </div>`;
+}
+
 /* ============================ BIND ============================ */
 function viewHelp(){
   const stageDefs = [
@@ -864,6 +973,25 @@ function bindContent(){
     col.ondragleave=()=>colEl.classList.remove('drop-on');
     col.ondrop=e=>{ e.preventDefault(); colEl.classList.remove('drop-on'); moveStage(dragId, col.dataset.stage); };
   });
+  // Admin: roster add / remove
+  const rAdd=document.getElementById('rosterAdd');
+  if(rAdd){
+    const rmsg=(t,ok=true)=>{ const m=document.getElementById('rosterMsg'); if(m){ m.style.color=ok?'var(--good)':'var(--danger)'; m.textContent=t; } };
+    const doAdd=async ()=>{
+      const nameEl=document.getElementById('rosterName'); const name=(nameEl.value||'').trim(); const role=document.getElementById('rosterRole').value;
+      if(!name){ nameEl.focus(); rmsg('Enter a name.',false); return; }
+      if(ROSTER.some(r=>r.name.toLowerCase()===name.toLowerCase())){ rmsg(name+' is already on the roster.',false); return; }
+      ROSTER.push({name, role}); await saveRoster(); render(); rmsg(name+' added to the roster.');
+    };
+    rAdd.onclick=doAdd;
+    const nEl=document.getElementById('rosterName'); if(nEl) nEl.addEventListener('keydown',e=>{ if(e.key==='Enter') doAdd(); });
+    document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async ()=>{
+      const i=+b.dataset.del; const r=ROSTER[i]; if(!r) return;
+      const usedCt=LEADS.filter(l=>l.origination===r.name||l.owner===r.name).length;
+      const warn = usedCt? `\n\nHeads up: ${r.name} is set on ${usedCt} existing lead(s). Removing them here won't change those leads, but they'll no longer appear in the dropdowns.` : '';
+      if(confirm(`Remove ${r.name} from the roster?`+warn)){ ROSTER.splice(i,1); await saveRoster(); render(); }
+    });
+  }
 }
 let dragId=null;
 function moveStage(id, stage){
@@ -1120,9 +1248,11 @@ function hideLogin(){ document.getElementById('login').classList.remove('show');
 let _rtBound=false;
 async function enterApp(){
   hideLogin();
-  CURRENT_USER = niceName(SESSION && SESSION.user ? SESSION.user.email : 'Team Member');
+  CURRENT_EMAIL = (SESSION && SESSION.user ? SESSION.user.email : '') || '';
+  CURRENT_USER = niceName(CURRENT_EMAIL || 'Team Member');
   setUserBadge();
   const b=document.getElementById('cloudBanner'); if(b){ b.style.display='block'; b.textContent='☁ Shared cloud mode — synced across your team'; }
+  await loadRoster();
   LEADS = await cloudLoad();
   if(!LEADS.length){ LEADS = ensureTouch(JSON.parse(JSON.stringify(SEED_LEADS))); await saveAll(); }
   render(); updateSaveStatus();
@@ -1184,6 +1314,9 @@ function subscribeRealtime(){
     sb.channel('leads-rt').on('postgres_changes',{event:'*',schema:'public',table:'leads'}, async ()=>{
       const sel=state.selected; LEADS=await cloudLoad(); render();
       if(sel && LEADS.find(l=>l.id===sel)) openDrawer(sel);
+    }).subscribe();
+    sb.channel('settings-rt').on('postgres_changes',{event:'*',schema:'public',table:'settings'}, async ()=>{
+      await loadRoster(); render();
     }).subscribe();
   }catch(e){ console.error('realtime', e); }
 }
