@@ -502,7 +502,7 @@ const SEED_LEADS = [
 
 // ---- persistence (local + cloud) ----
 const STORE_KEY = 'titus_leads_v1';
-function ensureTouch(arr){ arr.forEach(l=>{ const a=l.activities[0]; if(a) l.lastTouch={date:a.date, type:a.type}; }); return arr; }
+function ensureTouch(arr){ arr.forEach(l=>{ const a=l.activities[0]; if(a) l.lastTouch={date:a.date, type:a.type}; if(!l.stageHistory||!l.stageHistory.length){ const first=(l.activities&&l.activities.length)?l.activities[l.activities.length-1].date:null; l.stageHistory=[{stage:l.stage, date:l.created||first||TODAY_ISO}]; } }); return arr; }
 function loadLeads(){
   try{ const s=localStorage.getItem(STORE_KEY); if(s){ const d=JSON.parse(s); if(Array.isArray(d)&&d.length) return d; } }catch(e){}
   return JSON.parse(JSON.stringify(SEED_LEADS));
@@ -693,8 +693,24 @@ function viewDashboard(){
       <div class="mini-end"><div style="font-size:11px;color:var(--muted)">${fmtDate(l.lastTouch.date)}</div></div>
     </div>`).join('');
 
+  // my next steps (person-specific tasks with due dates)
+  const myFirst = (CURRENT_USER||'').trim().split(/\s+/)[0].toLowerCase();
+  const firstOf = s => (s||'').trim().split(/\s+/)[0].toLowerCase();
+  const isMine = l => firstOf(l.owner)===myFirst || (l.owner||'').toLowerCase()===(CURRENT_USER||'').toLowerCase();
+  const mine = LEADS.filter(l=>isMine(l) && l.stage!=='won' && l.stage!=='onboarding' && l.stage!=='lost' && l.nextStep && l.nextStep.due)
+    .sort((a,b)=> a.nextStep.due < b.nextStep.due ? -1 : a.nextStep.due > b.nextStep.due ? 1 : 0);
+  const myHTML = mine.length ? mine.map(l=>{ const od=isOverdue(l); return `
+    <div class="mini-row" data-open="${l.id}" style="cursor:pointer">
+      <div class="mini-av" style="${od?'background:var(--danger-bg);color:var(--danger)':''}">${initials(l.name)}</div>
+      <div class="mini-main"><div class="nm">${l.name}</div><div class="sub">${l.nextStep.action}</div></div>
+      <div class="mini-end"><div class="touch ${od?'overdue':''}">${od?'Overdue · ':'Due '}${fmtDate(l.nextStep.due)}</div><div style="font-size:11px;color:var(--muted)">${stageById(l.stage).name}</div></div>
+    </div>`; }).join('') : `<div class="empty">${svg(I.trophy)}<div>No open next steps assigned to you.</div></div>`;
+
   return `
   <div class="kpi-grid">${kpiHTML}</div>
+  <div class="dash-row">
+    <div class="panel" style="grid-column:1/-1"><div class="panel-head"><h3>My Next Steps</h3><span class="hint">${CURRENT_USER} · by due date</span></div><div class="panel-body" style="padding-top:6px;padding-bottom:6px">${myHTML}</div></div>
+  </div>
   <div class="dash-row">
     <div class="panel"><div class="panel-head"><h3>Pipeline by Stage</h3><span class="hint">Count · value</span></div><div class="panel-body">${funnel}</div></div>
     <div class="panel"><div class="panel-head"><h3>Origination Leaderboard</h3><span class="hint">Partner credit</span></div><div class="panel-body">${orig}</div></div>
@@ -734,7 +750,7 @@ function cardHTML(l){
     <div class="row2"><span class="val">${fmtMoney(l.value)}</span><span style="flex:1"></span>${srcPill(l.source)}</div>
     <div class="nextstep" style="margin-top:10px">${svg(I.flag,2.2)}<span>${l.nextStep.action.replace('OVERDUE: ','')}</span></div>
     <div class="foot">
-      <div class="touch ${overdue?'overdue':''}">${svg(I.clock,2)} ${overdue?'Overdue':fmtDate(l.lastTouch.date)}</div>
+      <div class="touch ${overdue?'overdue':''}" title="Next step due date">${svg(I.clock,2)} ${l.nextStep&&l.nextStep.due ? (overdue?'Overdue · ':'Due ')+fmtDate(l.nextStep.due) : '—'}</div>
       <div class="owner-chip" title="Originated by ${l.origination}">${initials(l.origination)}</div>
     </div>
   </div>`;
@@ -854,9 +870,37 @@ function moveStage(id, stage){
   const l = LEADS.find(x=>x.id===id); if(!l || l.stage===stage) return;
   const from = stageById(l.stage).name, to = stageById(stage).name;
   l.stage = stage;
+  if(!l.stageHistory) l.stageHistory=[];
+  l.stageHistory.push({stage, date:TODAY_ISO});
   l.activities.unshift({date:TODAY_ISO, type:'Stage', note:`Moved from ${from} to ${to}.`, by:CURRENT_USER});
   l.lastTouch={date:TODAY_ISO, type:'Stage'};
   saveLead(l); render();
+}
+
+/* ---- CSV export (spreadsheet-friendly, includes stage-timing metrics) ---- */
+function downloadCSV(){
+  const esc = v => { v = (v==null?'':String(v)); return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+  const cols = ['Name','Company','Email','Phone','Tier','Stage','Est Annual Fees','Source','Referred By','Origination Owner','Assigned To','Next Step','Next Step Due','Overdue','Stage Entered','Days In Current Stage','Last Touch','Lead Created'];
+  const lines = [cols.join(',')];
+  LEADS.forEach(l=>{
+    const sh = (l.stageHistory&&l.stageHistory.length) ? l.stageHistory[l.stageHistory.length-1] : null;
+    const entered = sh ? sh.date : (l.created||'');
+    const row = [
+      l.name, l.company, l.email, l.phone,
+      (TIERS[l.tier]?TIERS[l.tier].label:l.tier),
+      stageById(l.stage).name, l.value, l.source, l.referredBy,
+      l.origination, l.owner,
+      l.nextStep?l.nextStep.action:'', l.nextStep?l.nextStep.due:'',
+      isOverdue(l)?'Yes':'No',
+      entered, entered?daysAgo(entered):'',
+      l.lastTouch?l.lastTouch.date:'', l.created||''
+    ];
+    lines.push(row.map(esc).join(','));
+  });
+  const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='titus-leads-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 /* ============================ DRAWER ============================ */
@@ -978,6 +1022,7 @@ function saveAdd(){
     tier:v('a_tier'), stage:'new', value:+v('a_value')||0, source:v('a_source'), referredBy:v('a_ref')||'—',
     origination:v('a_orig'), owner:v('a_owner'), created:TODAY_ISO,
     nextStep:{action:v('a_next')||'Initial outreach', due:v('a_nextdue')||plusDays(7)},
+    stageHistory:[{stage:'new', date:TODAY_ISO}],
     activities:[{date:TODAY_ISO, type:'Note', note:'Lead created.', by:CURRENT_USER}], lastTouch:{date:TODAY_ISO,type:'Note'}};
   LEADS.unshift(lead); saveLead(lead); closeAdd(); render();
   if(state.view==='dashboard'){ setView('pipeline'); }
@@ -996,6 +1041,7 @@ function openData(){
           : `Your ${count} leads are saved automatically to <b>this browser on this device</b>. They are not on a server and won't sync to other devices. Export a backup regularly — clearing browser data will erase them.`}</p>
         <div style="display:flex;flex-direction:column;gap:10px">
           <button class="btn btn-navy" id="dExport" style="justify-content:flex-start;padding:12px 14px">${svg(I.download,2)} Export backup (.json)</button>
+          <button class="btn btn-ghost" id="dExportCsv" style="justify-content:flex-start;padding:12px 14px">${svg(I.download,2)} Export as spreadsheet (.csv)</button>
           <button class="btn btn-ghost" id="dImport" style="justify-content:flex-start;padding:12px 14px">${svg(I.upload,2)} Import / restore from file</button>
           <button class="btn btn-ghost" id="dClear" style="justify-content:flex-start;padding:12px 14px;color:var(--danger);border-color:#f0d3d0">${svg(I.trash,2)} Clear all leads (start fresh)</button>
           <button class="btn btn-ghost" id="dReset" style="justify-content:flex-start;padding:12px 14px">${svg(I.upload,2)} Reset to sample data</button>
@@ -1013,6 +1059,7 @@ function openData(){
     a.download='titus-leads-'+new Date().toISOString().slice(0,10)+'.json'; a.click();
     URL.revokeObjectURL(a.href); msg('Backup downloaded.');
   };
+  document.getElementById('dExportCsv').onclick=()=>{ downloadCSV(); msg('Spreadsheet (.csv) downloaded.'); };
   document.getElementById('dImport').onclick=()=>document.getElementById('dFile').click();
   document.getElementById('dFile').onchange=e=>{
     const f=e.target.files[0]; if(!f) return; const r=new FileReader();
@@ -1022,9 +1069,10 @@ function openData(){
     r.readAsText(f);
   };
   document.getElementById('dClear').onclick=async ()=>{
-    if(confirm('Delete ALL leads and start with a blank tracker? This removes the sample data (and any leads you\'ve added) for everyone. Export a backup first if you want a copy. This cannot be undone.')){
-      await deleteAllLeads(); closeDrawer(); render(); msg('All leads deleted — you have a blank tracker.');
-    }
+    if(!confirm('Delete ALL leads and start with a blank tracker? This removes the sample data (and any leads you\'ve added) for EVERYONE on the team. Export a backup first if you want a copy. This cannot be undone.')) return;
+    const typed = prompt('Final check — this permanently deletes ALL leads for the entire team and cannot be undone.\n\nType  DELETE  (in capitals) to confirm:');
+    if(typed !== 'DELETE'){ msg('Cancelled — nothing was deleted.', false); return; }
+    await deleteAllLeads(); closeDrawer(); render(); msg('All leads deleted — you have a blank tracker.');
   };
   document.getElementById('dReset').onclick=async ()=>{
     if(confirm('Reset to the original sample data? This replaces the current leads with the demo set for everyone (export a backup first if needed).')){
@@ -1040,7 +1088,7 @@ document.getElementById('addBtnTop').onclick=openAdd;
 document.getElementById('dataBtnTop').onclick=openData;
 document.getElementById('dataBtnM').onclick=openData;
 document.getElementById('helpBtnM').onclick=()=>setView('help');
-const syncSearch=v=>{ state.search=v; render(); };
+const syncSearch=v=>{ state.search=v; if(v.trim() && state.view==='dashboard'){ setView('leads'); } else { render(); } };
 document.getElementById('searchInput').oninput=e=>{ document.getElementById('searchInputM').value=e.target.value; syncSearch(e.target.value); };
 document.getElementById('searchInputM').oninput=e=>{ document.getElementById('searchInput').value=e.target.value; syncSearch(e.target.value); };
 document.getElementById('mSearchBtn').onclick=()=>document.getElementById('mSearchBar').classList.toggle('open');
