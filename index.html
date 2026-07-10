@@ -204,6 +204,8 @@ tbody tr:last-child td{border-bottom:none}
 .tl-item .dt{font-size:11px;color:var(--muted);white-space:nowrap}
 .tl-item .nt{font-size:12.5px;color:#54627a;margin-top:2px;line-height:1.4}
 .tl-item .by{font-size:11px;color:var(--muted);margin-top:3px}
+.tl-del{background:none;border:none;cursor:pointer;color:#b9c0cc;padding:0;line-height:1;opacity:.65;display:inline-flex}
+.tl-del:hover{color:var(--danger);opacity:1}
 
 .logbox{background:#faf8f2;border:1px solid var(--line);border-radius:11px;padding:14px;margin-top:6px}
 .logbox .lr{display:flex;gap:8px;margin-bottom:9px;flex-wrap:wrap}
@@ -424,7 +426,11 @@ function refreshOwners(){ OWNERS = ROSTER.map(r=>r.name); }
 // Admins (can see/manage the Admin tab). Client-side gate; roster table also RLS-limited.
 const ADMIN_EMAILS = ['mat@titusandcompany.com','sam@titusandcompany.com','mcox@tituscpa.com','sbellman@tituscpa.com','matcox18@gmail.com'];
 function isAdmin(){ return !CLOUD || ADMIN_EMAILS.includes((CURRENT_EMAIL||'').toLowerCase()); }
-const SOURCES = ['Client Referral','COI / Referral Partner','Existing Client Expansion','Paid Ads (Meta / Google)','Website','LinkedIn','Networking Event','Google Search'];
+const SOURCES = ['Client Referral','Referral Partner','Financial Advisor','Existing Client Expansion','Paid Ads (Meta / Google)','Website','LinkedIn','Networking Event','Google Search'];
+const NEXT_STEPS = ['Book discovery call','Set up meeting','Send follow-up email','Send proposal / scope of services','Schedule intro call','Request documents to review','Add to nurture / newsletter list'];
+// Progressive input formatters for the Add-Lead form
+function fmtPhoneInput(val){ const d=String(val).replace(/\D/g,'').slice(0,10); if(!d) return ''; if(d.length<4) return '('+d; if(d.length<7) return '('+d.slice(0,3)+') '+d.slice(3); return '('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6); }
+function fmtFeeInput(val){ const d=String(val).replace(/[^0-9]/g,''); return d?'$'+Number(d).toLocaleString('en-US'):''; }
 const TIERS = {
   'I':  {cls:'tier1', label:'Tier I',   desc:'Business owner anchor'},
   'II': {cls:'tier2', label:'Tier II',  desc:'Personal w/ business potential'},
@@ -448,7 +454,7 @@ const SEED_LEADS = [
      {date:'2026-05-20', type:'Proposal', note:'Sent tiered proposal — selected Tier I anchor package.', by:'Mat Cox'},
      {date:'2026-05-06', type:'Call', note:'Discovery call. ~$6M revenue, 22 employees, outgrowing current bookkeeper.', by:'Mat Cox'}
    ]},
-  {id:2, name:'Priya Anand', company:'Anand Dental Group', email:'priya@ananddental.com', phone:'(205) 555-0188', tier:'I', stage:'proposal', value:28000, source:'COI / Referral Partner', referredBy:'Regions Bank — J. Tolbert', origination:'Sam Bellman', owner:'Sam Bellman', created:'2026-05-02',
+  {id:2, name:'Priya Anand', company:'Anand Dental Group', email:'priya@ananddental.com', phone:'(205) 555-0188', tier:'I', stage:'proposal', value:28000, source:'Referral Partner', referredBy:'Regions Bank — J. Tolbert', origination:'Sam Bellman', owner:'Sam Bellman', created:'2026-05-02',
    nextStep:{action:'Follow up on proposal — decision expected', due:'2026-06-13'},
    activities:[
      {date:'2026-06-06', type:'Proposal', note:'Sent proposal: CAS + practice profitability advisory.', by:'Sam Bellman'},
@@ -491,7 +497,7 @@ const SEED_LEADS = [
    activities:[
      {date:'2026-06-11', type:'Note', note:'Inbound web lead. Sole prop, considering LLC + S-corp.', by:'System'}
    ]},
-  {id:9, name:'Victor Osei', company:'Osei Imports', email:'victor@oseiimports.com', phone:'(205) 555-0390', tier:'I', stage:'new', value:33000, source:'COI / Referral Partner', referredBy:'Bradford Law — counsel', origination:'Mat Cox', owner:'Mat Cox', created:'2026-06-12',
+  {id:9, name:'Victor Osei', company:'Osei Imports', email:'victor@oseiimports.com', phone:'(205) 555-0390', tier:'I', stage:'new', value:33000, source:'Referral Partner', referredBy:'Bradford Law — counsel', origination:'Mat Cox', owner:'Mat Cox', created:'2026-06-12',
    nextStep:{action:'Send intro email + book call', due:'2026-06-15'},
    activities:[
      {date:'2026-06-12', type:'Note', note:'Attorney referral. Import/distribution, multi-state nexus.', by:'Mat Cox'}
@@ -503,7 +509,7 @@ const SEED_LEADS = [
      {date:'2026-05-29', type:'Proposal', note:'Sent flat-fee Tier III quote.', by:'Hudson Pitts'},
      {date:'2026-05-09', type:'Email', note:'Inbound. Straightforward personal return.', by:'Hudson Pitts'}
    ]},
-  {id:11, name:'Brandon Lee', company:'Lee Property Partners', email:'brandon@leeproperty.com', phone:'(205) 555-0440', tier:'I', stage:'meeting', value:38000, source:'COI / Referral Partner', referredBy:'Synovus — M. Hale', origination:'Sam Bellman', owner:'Sam Bellman', created:'2026-05-15',
+  {id:11, name:'Brandon Lee', company:'Lee Property Partners', email:'brandon@leeproperty.com', phone:'(205) 555-0440', tier:'I', stage:'meeting', value:38000, source:'Referral Partner', referredBy:'Synovus — M. Hale', origination:'Sam Bellman', owner:'Sam Bellman', created:'2026-05-15',
    nextStep:{action:'Proposal review meeting', due:'2026-06-19'},
    activities:[
      {date:'2026-06-02', type:'Meeting', note:'Reviewed portfolio. 14 doors + 2 commercial. Cost seg interest.', by:'Sam Bellman'},
@@ -1038,9 +1044,9 @@ function openDrawer(id){
   if(!l){ closeDrawer(); return; }
   const s = stageById(l.stage);
   const stagePick = STAGES.map(st=>`<button class="${st.id===l.stage?'on':''}" data-stage="${st.id}">${st.name}</button>`).join('');
-  const tl = l.activities.map(a=>`
+  const tl = l.activities.map((a,i)=>`
     <div class="tl-item"><div class="tl-dot">${svg(I.flag,2.4)}</div>
-      <div class="h"><span class="ty">${a.type}</span><span class="dt">${fmtDate(a.date)}</span></div>
+      <div class="h"><span class="ty">${a.type}</span><span style="display:flex;align-items:center;gap:8px"><span class="dt">${fmtDate(a.date)}</span><button class="tl-del" data-delact="${i}" title="Delete this touchpoint" aria-label="Delete touchpoint">${svg(I.trash,2)}</button></span></div>
       <div class="nt">${a.note}</div><div class="by">${a.by}</div>
     </div>`).join('');
   const overdue = isOverdue(l);
@@ -1067,6 +1073,7 @@ function openDrawer(id){
         <div class="field"><div class="l">Client Tier</div><div class="v">${TIERS[l.tier].label} — ${TIERS[l.tier].desc}</div></div>
         <div class="field"><div class="l">Lead Created</div><div class="v">${fmtDate(l.created)} (${daysAgo(l.created)}d ago)</div></div>
       </div>
+      ${l.notes?`<div class="field" style="margin-top:14px"><div class="l">Notes</div><div class="v" style="white-space:pre-wrap;line-height:1.55">${String(l.notes).replace(/</g,'&lt;')}</div></div>`:''}
 
       <div class="sect-title">Move Stage</div>
       <div class="stage-pick" id="stagePick">${stagePick}</div>
@@ -1108,6 +1115,14 @@ function openDrawer(id){
     if(type==='Signed' && l.stage!=='won' && l.stage!=='onboarding') l.stage='won';
     saveLead(l); render(); openDrawer(id);
   };
+  document.querySelectorAll('[data-delact]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.delact; const a=l.activities[i]; if(!a) return;
+    if(confirm(`Delete this ${String(a.type).toLowerCase()} touchpoint from ${fmtDate(a.date)}? This can't be undone.`)){
+      l.activities.splice(i,1);
+      if(l.activities[0]) l.lastTouch={date:l.activities[0].date, type:l.activities[0].type};
+      saveLead(l); render(); openDrawer(id);
+    }
+  });
   document.getElementById('overlay').classList.add('show');
   document.getElementById('drawer').classList.add('show');
 }
@@ -1125,14 +1140,15 @@ function openAdd(){
           <div><label>Email</label><input id="a_email" placeholder="jane@company.com" /></div>
           <div><label>Phone</label><input id="a_phone" placeholder="(205) 555-0000" /></div>
           <div><label>Client Tier</label><select id="a_tier"><option value="I">Tier I — Business anchor</option><option value="II">Tier II — Personal w/ potential</option><option value="III">Tier III — Simple personal</option></select></div>
-          <div><label>Est. Annual Fees</label><input id="a_value" type="number" placeholder="25000" /></div>
+          <div><label>Est. Annual Fees</label><input id="a_value" type="text" inputmode="numeric" placeholder="$25,000" /></div>
           <div><label>Lead Source</label><select id="a_source">${SOURCES.map(s=>`<option>${s}</option>`).join('')}</select></div>
           <div><label>Referred By</label><input id="a_ref" placeholder="Name / firm (optional)" /></div>
           <div><label>Origination Owner *</label><select id="a_orig">${OWNERS.map(o=>`<option>${o}</option>`).join('')}</select></div>
           <div><label>Assigned To</label><select id="a_owner">${OWNERS.map(o=>`<option>${o}</option>`).join('')}</select></div>
-          <div><label>First Next Step</label><input id="a_next" placeholder="e.g. Book discovery call" /></div>
+          <div><label>First Next Step</label><select id="a_next">${NEXT_STEPS.map(s=>`<option>${s}</option>`).join('')}<option>Other…</option></select><input id="a_next_other" placeholder="Type a custom next step" style="display:none;margin-top:6px" /></div>
           <div><label>Next Step Due By</label><input id="a_nextdue" type="date" /></div>
         </div>
+        <div style="margin-top:14px"><label style="display:block;margin-bottom:6px">Notes</label><textarea id="a_notes" rows="3" placeholder="Context on this lead — how you met, what they need, anything the team should know…" style="width:100%;box-sizing:border-box"></textarea></div>
       </div>
       <div class="modal-foot"><button class="btn btn-ghost" id="mCancel">Cancel</button><button class="btn btn-gold" id="mSave">Add Lead</button></div>
     </div>`;
@@ -1140,18 +1156,25 @@ function openAdd(){
   document.getElementById('mClose').onclick=closeAdd;
   document.getElementById('mCancel').onclick=closeAdd;
   document.getElementById('mSave').onclick=saveAdd;
+  const ph=document.getElementById('a_phone'); if(ph) ph.addEventListener('input',()=>{ ph.value=fmtPhoneInput(ph.value); });
+  const val=document.getElementById('a_value'); if(val) val.addEventListener('input',()=>{ val.value=fmtFeeInput(val.value); });
+  const nx=document.getElementById('a_next'), nxo=document.getElementById('a_next_other');
+  if(nx&&nxo) nx.addEventListener('change',()=>{ const other=nx.value==='Other…'; nxo.style.display=other?'block':'none'; if(other) nxo.focus(); });
 }
 function closeAdd(){ document.getElementById('modal').classList.remove('show'); }
 function saveAdd(){
   const v=id=>document.getElementById(id).value.trim();
   const name=v('a_name'); if(!name){ document.getElementById('a_name').focus(); document.getElementById('a_name').style.borderColor='var(--danger)'; return; }
   const id=Date.now();
+  const feeNum=+String(v('a_value')).replace(/[^0-9.]/g,'')||0;
+  const nextSel=v('a_next'); const nextAction=(nextSel==='Other…'?(v('a_next_other')||'Initial outreach'):nextSel)||'Initial outreach';
+  const notes=v('a_notes');
   const lead={id, name, company:v('a_company')||'—', email:v('a_email')||'—', phone:v('a_phone')||'—',
-    tier:v('a_tier'), stage:'new', value:+v('a_value')||0, source:v('a_source'), referredBy:v('a_ref')||'—',
-    origination:v('a_orig'), owner:v('a_owner'), created:TODAY_ISO,
-    nextStep:{action:v('a_next')||'Initial outreach', due:v('a_nextdue')||plusDays(7)},
+    tier:v('a_tier'), stage:'new', value:feeNum, source:v('a_source'), referredBy:v('a_ref')||'—',
+    origination:v('a_orig'), owner:v('a_owner'), created:TODAY_ISO, notes,
+    nextStep:{action:nextAction, due:v('a_nextdue')||plusDays(7)},
     stageHistory:[{stage:'new', date:TODAY_ISO}],
-    activities:[{date:TODAY_ISO, type:'Note', note:'Lead created.', by:CURRENT_USER}], lastTouch:{date:TODAY_ISO,type:'Note'}};
+    activities:[{date:TODAY_ISO, type:'Note', note:notes?('Lead created. '+notes):'Lead created.', by:CURRENT_USER}], lastTouch:{date:TODAY_ISO,type:'Note'}};
   LEADS.unshift(lead); saveLead(lead); closeAdd(); render();
   if(state.view==='dashboard'){ setView('pipeline'); }
   setTimeout(()=>openDrawer(id),120);
