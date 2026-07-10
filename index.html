@@ -1057,7 +1057,7 @@ function openDrawer(id){
     </div>
     <div class="dr-body">
       <div class="nextbox">
-        <div class="l">${svg(I.flag,2.4)} Next Step ${overdue?'· <span style="color:var(--danger)">OVERDUE</span>':''}</div>
+        <div class="l">Next Step ${overdue?'· <span style="color:var(--danger)">OVERDUE</span>':''}</div>
         <div class="act">${l.nextStep.action.replace('OVERDUE: ','')}</div>
         <div class="due">${isOverdue(l)?'<span style="color:var(--danger);font-weight:700">Overdue · </span>':''}Due ${new Date(l.nextStep.due+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
       </div>
