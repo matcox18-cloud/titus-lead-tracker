@@ -426,7 +426,7 @@ function refreshOwners(){ OWNERS = ROSTER.map(r=>r.name); }
 // Admins (can see/manage the Admin tab). Client-side gate; roster table also RLS-limited.
 const ADMIN_EMAILS = ['mat@titusandcompany.com','sam@titusandcompany.com','mcox@tituscpa.com','sbellman@tituscpa.com','matcox18@gmail.com'];
 function isAdmin(){ return !CLOUD || ADMIN_EMAILS.includes((CURRENT_EMAIL||'').toLowerCase()); }
-const SOURCES = ['Client Referral','Referral Partner','Financial Advisor','Existing Client Expansion','Paid Ads (Meta / Google)','Website','LinkedIn','Networking Event','Google Search'];
+const SOURCES = ['Client Referral','Referral Partner','Financial Advisor','Friends and Family','Existing Client Expansion','Paid Ads (Meta / Google)','Website','LinkedIn','Networking Event','Google Search'];
 const NEXT_STEPS = ['Book discovery call','Set up meeting','Send follow-up email','Send proposal / scope of services','Schedule intro call','Request documents to review','Add to nurture / newsletter list'];
 // Progressive input formatters for the Add-Lead form
 function fmtPhoneInput(val){ const d=String(val).replace(/\D/g,'').slice(0,10); if(!d) return ''; if(d.length<4) return '('+d; if(d.length<7) return '('+d.slice(0,3)+') '+d.slice(3); return '('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6); }
