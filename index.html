@@ -431,6 +431,7 @@ const NEXT_STEPS = ['Book discovery call','Set up meeting','Send follow-up email
 // Progressive input formatters for the Add-Lead form
 function fmtPhoneInput(val){ const d=String(val).replace(/\D/g,'').slice(0,10); if(!d) return ''; if(d.length<4) return '('+d; if(d.length<7) return '('+d.slice(0,3)+') '+d.slice(3); return '('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6); }
 function fmtFeeInput(val){ const d=String(val).replace(/[^0-9]/g,''); return d?'$'+Number(d).toLocaleString('en-US'):''; }
+function hesc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 const TIERS = {
   'I':  {cls:'tier1', label:'Tier I',   desc:'Business owner anchor'},
   'II': {cls:'tier2', label:'Tier II',  desc:'Personal w/ business potential'},
@@ -680,9 +681,11 @@ function renderNav(){
   ).join('')
   + (isAdmin() ? '<div class="nav-label" style="margin-top:10px">Admin</div>'
       + `<button class="nav-item ${state.view==='admin'?'active':''}" data-view="admin"><span style="display:flex">${svg(I.gear)}</span>Team &amp; Originators</button>` : '')
+  + '<div class="nav-label" style="margin-top:10px">Client Hub</div>'
+  + `<a class="nav-item" href="https://matcox18-cloud.github.io/titus-crm-preview/titus-client-hub-prototype.html#legacy" target="_blank" rel="noopener"><span style="display:flex">${svg(I.users)}</span>Legacy Builder ↗</a>`
   + '<div class="nav-label" style="margin-top:10px">Resources</div>'
   + `<button class="nav-item ${state.view==='help'?'active':''}" data-view="help"><span style="display:flex">${svg(I.book)}</span>Instructions</button>`;
-  menu.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+  menu.querySelectorAll('.nav-item[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
   const bn = document.getElementById('bottomNav');
   bn.innerHTML = NAVS.map(n=>`<button class="bn-item ${state.view===n.id?'active':''}" data-view="${n.id}">${svg(n.icon)}<span>${n.name}</span></button>`).join('')
     + `<button class="bn-item bn-add" id="bnAdd"><span class="plus">${svg(I.add,2.4)}</span><span>Add</span></button>`;
@@ -1062,7 +1065,7 @@ function openDrawer(id){
         <div class="due">${isOverdue(l)?'<span style="color:var(--danger);font-weight:700">Overdue · </span>':''}Due ${new Date(l.nextStep.due+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
       </div>
 
-      <div class="sect-title">Lead Details</div>
+      <div class="sect-title" style="display:flex;justify-content:space-between;align-items:center">Lead Details <button class="btn btn-ghost" id="drEdit" style="padding:4px 12px;font-size:12px;text-transform:none;letter-spacing:0">✎ Edit</button></div>
       <div class="dr-grid">
         <div class="field"><div class="l">Lead Source</div><div class="v">${l.source}</div></div>
         <div class="field"><div class="l">Referred By</div><div class="v">${l.referredBy}</div></div>
@@ -1097,6 +1100,7 @@ function openDrawer(id){
       </div>
     </div>`;
   document.getElementById('drClose').onclick=closeDrawer;
+  document.getElementById('drEdit').onclick=()=>openEdit(id);
   document.getElementById('drDelete').onclick=async ()=>{
     if(confirm(`Delete ${l.name} (${l.company})? This permanently removes the lead and its history for everyone. This cannot be undone.`)){
       await deleteLead(id); closeDrawer(); render();
@@ -1178,6 +1182,61 @@ function saveAdd(){
   LEADS.unshift(lead); saveLead(lead); closeAdd(); render();
   if(state.view==='dashboard'){ setView('pipeline'); }
   setTimeout(()=>openDrawer(id),120);
+}
+
+/* ============================ EDIT MODAL ============================ */
+function openEdit(id){
+  const l=LEADS.find(x=>x.id===id); if(!l) return;
+  const clean=x=>(x==='—'||x==null)?'':x;
+  const tierRows=[['I','Tier I — Business anchor'],['II','Tier II — Personal w/ potential'],['III','Tier III — Simple personal']];
+  const tierOpts=tierRows.map(([v,lab])=>`<option value="${v}" ${l.tier===v?'selected':''}>${lab}</option>`).join('');
+  const srcList=SOURCES.includes(l.source)?SOURCES:[l.source,...SOURCES];
+  const srcOpts=srcList.map(s=>`<option ${l.source===s?'selected':''}>${s}</option>`).join('');
+  const origOpts=OWNERS.map(o=>`<option ${l.origination===o?'selected':''}>${o}</option>`).join('');
+  const ownOpts=OWNERS.map(o=>`<option ${l.owner===o?'selected':''}>${o}</option>`).join('');
+  document.getElementById('modal').innerHTML = `
+    <div class="modal-card">
+      <div class="modal-head"><h3>Edit Lead</h3><button class="dr-close" id="mClose" style="color:var(--muted)">&times;</button></div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div><label>Contact Name *</label><input id="e_name" value="${hesc(clean(l.name))}" /></div>
+          <div><label>Company</label><input id="e_company" value="${hesc(clean(l.company))}" /></div>
+          <div><label>Email</label><input id="e_email" value="${hesc(clean(l.email))}" /></div>
+          <div><label>Phone</label><input id="e_phone" value="${hesc(clean(l.phone))}" placeholder="(205) 555-0000" /></div>
+          <div><label>Client Tier</label><select id="e_tier">${tierOpts}</select></div>
+          <div><label>Est. Annual Fees</label><input id="e_value" type="text" inputmode="numeric" value="${hesc(fmtFeeInput(String(l.value||'')))}" placeholder="$25,000" /></div>
+          <div><label>Lead Source</label><select id="e_source">${srcOpts}</select></div>
+          <div><label>Referred By</label><input id="e_ref" value="${hesc(clean(l.referredBy))}" placeholder="Name / firm (optional)" /></div>
+          <div><label>Origination Owner *</label><select id="e_orig">${origOpts}</select></div>
+          <div><label>Assigned To</label><select id="e_owner">${ownOpts}</select></div>
+        </div>
+        <div style="margin-top:14px"><label style="display:block;margin-bottom:6px">Notes</label><textarea id="e_notes" rows="3" placeholder="Context on this lead…" style="width:100%;box-sizing:border-box">${hesc(clean(l.notes))}</textarea></div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-ghost" id="mCancel">Cancel</button><button class="btn btn-gold" id="mSave">Save Changes</button></div>
+    </div>`;
+  document.getElementById('modal').classList.add('show');
+  document.getElementById('mClose').onclick=closeAdd;
+  document.getElementById('mCancel').onclick=closeAdd;
+  document.getElementById('mSave').onclick=()=>saveEdit(id);
+  const ph=document.getElementById('e_phone'); if(ph) ph.addEventListener('input',()=>{ ph.value=fmtPhoneInput(ph.value); });
+  const val=document.getElementById('e_value'); if(val) val.addEventListener('input',()=>{ val.value=fmtFeeInput(val.value); });
+}
+function saveEdit(id){
+  const l=LEADS.find(x=>x.id===id); if(!l) return;
+  const v=x=>document.getElementById(x).value.trim();
+  const name=v('e_name'); if(!name){ const el=document.getElementById('e_name'); el.focus(); el.style.borderColor='var(--danger)'; return; }
+  l.name=name;
+  l.company=v('e_company')||'—';
+  l.email=v('e_email')||'—';
+  l.phone=v('e_phone')||'—';
+  l.tier=v('e_tier');
+  l.value=+String(v('e_value')).replace(/[^0-9.]/g,'')||0;
+  l.source=v('e_source');
+  l.referredBy=v('e_ref')||'—';
+  l.origination=v('e_orig');
+  l.owner=v('e_owner');
+  l.notes=v('e_notes');
+  saveLead(l); closeAdd(); render(); openDrawer(id);
 }
 
 /* ============================ DATA / BACKUP ============================ */
