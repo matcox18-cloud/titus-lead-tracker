@@ -1060,7 +1060,7 @@ function openDrawer(id){
     </div>
     <div class="dr-body">
       <div class="nextbox">
-        <div class="l">Next Step ${overdue?'· <span style="color:var(--danger)">OVERDUE</span>':''}</div>
+        <div class="l" style="display:flex;justify-content:space-between;align-items:center">Next Step ${overdue?'· <span style="color:var(--danger)">OVERDUE</span>':''}<button class="btn btn-ghost" id="drNext" style="padding:3px 10px;font-size:11px;text-transform:none;letter-spacing:0">✎ Set</button></div>
         <div class="act">${l.nextStep.action.replace('OVERDUE: ','')}</div>
         <div class="due">${isOverdue(l)?'<span style="color:var(--danger);font-weight:700">Overdue · </span>':''}Due ${new Date(l.nextStep.due+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
       </div>
@@ -1101,6 +1101,7 @@ function openDrawer(id){
     </div>`;
   document.getElementById('drClose').onclick=closeDrawer;
   document.getElementById('drEdit').onclick=()=>openEdit(id);
+  document.getElementById('drNext').onclick=()=>openNextStep(id);
   document.getElementById('drDelete').onclick=async ()=>{
     if(confirm(`Delete ${l.name} (${l.company})? This permanently removes the lead and its history for everyone. This cannot be undone.`)){
       await deleteLead(id); closeDrawer(); render();
@@ -1236,6 +1237,40 @@ function saveEdit(id){
   l.origination=v('e_orig');
   l.owner=v('e_owner');
   l.notes=v('e_notes');
+  saveLead(l); closeAdd(); render(); openDrawer(id);
+}
+
+/* ============================ NEXT STEP ============================ */
+function openNextStep(id){
+  const l=LEADS.find(x=>x.id===id); if(!l) return;
+  const cur=(l.nextStep&&l.nextStep.action)||'';
+  const inList=NEXT_STEPS.includes(cur);
+  const opts=NEXT_STEPS.map(s=>`<option ${(inList&&s===cur)?'selected':''}>${s}</option>`).join('')+`<option ${inList?'':'selected'}>Other…</option>`;
+  const due=(l.nextStep&&l.nextStep.due)||'';
+  document.getElementById('modal').innerHTML = `
+    <div class="modal-card" style="width:440px">
+      <div class="modal-head"><h3>Set Next Step</h3><button class="dr-close" id="mClose" style="color:var(--muted)">&times;</button></div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:#54627a;margin-bottom:14px">Set the follow-up task and when it's due. This updates the lead's next step — it doesn't log a past touchpoint.</p>
+        <div style="margin-bottom:12px"><label style="display:block;margin-bottom:6px">Next step</label><select id="ns_action" style="width:100%">${opts}</select><input id="ns_other" placeholder="Type a custom next step" value="${inList?'':hesc(cur)}" style="width:100%;box-sizing:border-box;margin-top:6px;display:${inList?'none':'block'}" /></div>
+        <div><label style="display:block;margin-bottom:6px">Due by</label><input id="ns_due" type="date" value="${due}" /></div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-ghost" id="mCancel">Cancel</button><button class="btn btn-gold" id="mSave">Save Next Step</button></div>
+    </div>`;
+  document.getElementById('modal').classList.add('show');
+  document.getElementById('mClose').onclick=closeAdd;
+  document.getElementById('mCancel').onclick=closeAdd;
+  document.getElementById('mSave').onclick=()=>saveNextStep(id);
+  const sel=document.getElementById('ns_action'), oth=document.getElementById('ns_other');
+  sel.addEventListener('change',()=>{ const o=sel.value==='Other…'; oth.style.display=o?'block':'none'; if(o) oth.focus(); });
+}
+function saveNextStep(id){
+  const l=LEADS.find(x=>x.id===id); if(!l) return;
+  const sel=document.getElementById('ns_action').value;
+  const other=document.getElementById('ns_other').value.trim();
+  const action=(sel==='Other…'?(other||'Follow up'):sel);
+  const due=document.getElementById('ns_due').value||plusDays(7);
+  l.nextStep={action, due};
   saveLead(l); closeAdd(); render(); openDrawer(id);
 }
 
