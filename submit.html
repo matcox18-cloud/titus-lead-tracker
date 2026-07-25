@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Submit a Lead — Titus CPAs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --navy:#132b49; --gold:#d1af44; --gold-deep:#b8942f; --ink:#1f2733; --muted:#6b7686; --line:#e4e7ec; --bg:#f4f2ec; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Hanken Grotesk',-apple-system,Segoe UI,Roboto,sans-serif; line-height:1.5; }
+  .wrap{ max-width:640px; margin:0 auto; padding:0 16px 60px; }
+  .head{ background:var(--navy); color:#fff; text-align:center; padding:30px 24px 26px; }
+  .head img{ height:34px; width:auto; display:block; margin:0 auto 14px; }
+  .head h1{ font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:26px; margin:0; }
+  .head p{ margin:8px 0 0; color:#cdd6e2; font-size:14px; }
+  .card{ background:#fff; border:1px solid var(--line); border-radius:14px; margin-top:-18px; padding:22px; box-shadow:0 10px 30px rgba(19,43,73,.08); }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .full{ grid-column:1 / -1; }
+  label{ display:block; font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px; }
+  input,select,textarea{ width:100%; border:1px solid var(--line); border-radius:9px; padding:10px 12px; font:inherit; font-size:14.5px; color:var(--ink); background:#fbfcfd; }
+  input:focus,select:focus,textarea:focus{ outline:none; border-color:var(--gold); background:#fff; }
+  textarea{ resize:vertical; min-height:72px; }
+  .hp{ position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+  .req{ color:var(--gold-deep); }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; margin-top:18px; background:var(--gold); color:var(--navy); font-weight:700; font-size:15.5px; border:none; border-radius:10px; padding:14px; cursor:pointer; transition:.15s; }
+  .btn:hover{ background:var(--gold-deep); color:#fff; }
+  .btn:disabled{ opacity:.6; cursor:default; }
+  .msg{ margin-top:14px; font-size:13.5px; min-height:18px; }
+  .msg.err{ color:#c0392b; }
+  .foot{ text-align:center; color:var(--muted); font-size:12px; margin-top:18px; }
+  .done{ text-align:center; padding:30px 10px; }
+  .done .chk{ width:56px; height:56px; border-radius:50%; background:#e8f4ec; color:#2f7d4f; display:flex; align-items:center; justify-content:center; font-size:30px; margin:0 auto 14px; }
+  .done h2{ font-family:'Fraunces',Georgia,serif; font-weight:600; color:var(--navy); margin:0 0 6px; }
+  .done p{ color:var(--muted); margin:0 0 18px; }
+  .link-btn{ background:none; border:1px solid var(--line); color:var(--navy); border-radius:9px; padding:10px 18px; font-weight:600; cursor:pointer; width:auto; margin:0; }
+  @media(max-width:560px){ .grid{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <div class="head">
+    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAwIDE5NC4zMSI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jbHMtMSB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQoKICAgICAgLmNscy0yIHsKICAgICAgICBmaWxsOiAjZDFhZjQ0OwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8Zz4KICAgIDxwb2x5Z29uIGNsYXNzPSJjbHMtMiIgcG9pbnRzPSI2Ni44NCA3MC4xNCAxMDIuODUgNzAuMTQgMTAyLjg1IDE4Mi44IDExMi45MiAxODIuOCAxMTIuOTIgNzAuMTQgMTQ4LjkzIDcwLjE0IDE0OC45MyA2MC4wNyA2Ni44NCA2MC4wNyA2Ni44NCA3MC4xNCIvPgogICAgPHJlY3QgY2xhc3M9ImNscy0yIiB4PSI1Mi4zMiIgeT0iMTAuOTQiIHdpZHRoPSIxMTAuNzciIGhlaWdodD0iMTAuMDciLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMiIgZD0iTTY4LjcyLDg0LjY5aC0xLjg4djEwLjA3aDEuODhjNS4xNSwwLDkuMzQsNC4xOSw5LjM0LDkuMzR2NzguNzFoMTAuMDdWMTA0LjFjMC0xMC43LTguNzEtMTkuNDEtMTkuNDEtMTkuNDFaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Ik0xMjcuNjQsMTA0LjF2NzguNzFoMTAuMDdWMTA0LjFjMC01LjE1LDQuMTktOS4zNCw5LjM0LTkuMzRoMS44OHYtMTAuMDdoLTEuODhjLTEwLjcsMC0xOS40MSw4LjcxLTE5LjQxLDE5LjQxWiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0yIiBkPSJNMTg1LjUsMzUuNDNIMzAuMjhjLTEyLjA4LDAtMjEuOSw5LjgyLTIxLjksMjEuOXM5LjgyLDIxLjksMjEuOSwyMS45YzExLjE0LDAsMjAuMjYtOC4zOSwyMS42Mi0xOS4xNmgtMTAuMTVjLTEuMjQsNS4yLTUuOSw5LjA5LTExLjQ4LDkuMDktNi41MiwwLTExLjgzLTUuMzEtMTEuODMtMTEuODNzNS4zMS0xMS44MywxMS44My0xMS44M0gxODUuNWM2LjUyLDAsMTEuODMsNS4zMSwxMS44MywxMS44M3MtNS4zMSwxMS44My0xMS44MywxMS44M2MtNS41OCwwLTEwLjI0LTMuODktMTEuNDgtOS4wOWgtMTAuMTVjMS4zNiwxMC43NywxMC40OSwxOS4xNiwyMS42MiwxOS4xNiwxMi4wOCwwLDIxLjktOS44MiwyMS45LTIxLjlzLTkuODItMjEuOS0yMS45LTIxLjlaIi8+CiAgPC9nPgogIDxnPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMzUwLjQxLDM1LjM5djM0LjgyaC0yLjk1Yy0xLjM5LTMxLjAxLTM4LjI4LTMxLjg3LTM4LjI4LTMxLjg3aC0zLjI5djk4LjA1YzAsMTEuNzgsNy40NSwxOC4wMSwxNC43MiwxOC4wMXYyLjk1aC01NC41N3YtMi45NWM3LjI4LDAsMTQuNzMtNi4yMywxNC43My0xOC4wMVYzOC4zNGgtMy4yOXMtMzYuNzMsLjg3LTM4LjExLDMxLjg3aC0yLjk1VjM1LjM5aDExMy45OVoiLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTM5Ni44OSwxNTQuNDF2Mi45NWgtMzUuNTJ2LTIuOTVjNi41OC0yLjA4LDYuOTMtOS4zNSw2LjkzLTE4LjE5di0zOC40NmMwLTUuODktMS43My04LjMyLTguODQtMTIuMTN2LTIuOTRsMzAuMzItNi45M3Y2MC40NmMwLDkuNywuODcsMTYuNDYsNy4xLDE4LjE5Wm0tMTkuNTgtOTIuNTFjLTYuNTgsMC0xMS43OC01LjItMTEuNzgtMTEuNzhzNS4yLTExLjc4LDExLjc4LTExLjc4LDExLjk1LDUuMTksMTEuOTUsMTEuNzgtNS4zNywxMS43OC0xMS45NSwxMS43OFoiLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTQ2MC40NywxNDAuNTVsMi42LDEuNTZjLTMuNDYsOC4xNC0xNC4wMywxNi44LTI1LjY0LDE2LjgtMTMuNjksMC0yMS44My01LjU0LTIxLjgzLTI2LjV2LTUyLjE0aC04LjY2bC0uNTItMi45NWg5LjE4di0yMy4yMWwyMS42NS0zLjY0djI2Ljg1aDIwLjYxbC0uNjksMi45NWgtMTkuOTJ2NTEuNjJjMCw5LjcsNC4xNiwxNC43MywxMi44MiwxNC43Myw1LjAyLDAsOC44NC0zLjQ3LDEwLjM5LTYuMDdaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik01MjQuMjMsMTQ2Ljc5Yy02LjIzLDYuOTMtMTYuOCwxMi4xMi0yNC45NSwxMi4xMi0xMy42OSwwLTIxLjgzLTUuNzEtMjEuODMtMjYuNXYtMzcuMDdjMC0xMC4zOSwuMzUtMTEuOTUtOS43LTEzLjM0di0yLjk0bDMxLjE4LTMuMjl2NTYuMTNjMCw5LjcsNC41LDE0LjM4LDE0LjU1LDE0LjM4LDIuNiwwLDUuNzEtLjY5LDguNjYtMi45NWwyLjA4LDMuNDdabTM0LjgyLDQuNXYyLjk0bC0yNS42NCw0LjVjLTQuNjgsLjY5LTQuODUtMy4yOS00Ljg1LTMuMjl2LTU5LjU5YzAtMTAuNTcsLjY5LTEyLjgyLTguMTQtMTMuODZ2LTIuOTRsMjkuOC0zLjI5djY1LjY2YzAsOC4zMSwxLjU2LDkuMDEsOC44NCw5Ljg3WiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNNjI2LjQ1LDE0OS41NnMtNS43Miw4LjE0LTIwLjYyLDkuMTh2LTMuMjljOS4wMS0yLjc3LDkuMzYtMTUuOTQtMi40My0yMy43M2wtMTcuNDktMTAuNTdjLTE2LjgtMTAuMjItMjEuMzEtMjQuMjUtMTEuNzgtMzYuNzMsMCwwLDUuNzEtNy40NSwyMC40NC04LjQ5djMuMjljLTguNjYsMi40My0xMC45MSwxMy44NiwyLjQzLDIyLjM1bDE3LjQ5LDEwLjkxYzE1LjQyLDkuNTMsMjAuNjIsMjQuNiwxMS45NiwzNy4wN1ptLTI3Ljg5LDYuMjR2My4xMmMtMTguNTQtLjg3LTI3LjcyLTcuOTctMjcuNzItNy45N3YtMjEuODNoMi45NGMyLjQzLDYuNDEsNy40NSwyNC40MywyNC43NywyNi42OFptMy4yOS03Ni43NXYtMy4xMmMxNy4xNSwuNTIsMjQuNzcsNS4wMiwyNC43Nyw1LjAydjE5LjRoLTIuOTRjLTIuMDgtNS41NS02LjkzLTE5LjQtMjEuODMtMjEuMzFaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik02OTUuODcsMTU1LjE4Yy01LjI2LTIuMjMtOS44My01LjI1LTEzLjcxLTkuMDYtMy44OC0zLjgtNi45Ni04LjI3LTkuMjQtMTMuNDEtMi4yOC01LjE0LTMuNDEtMTAuNjUtMy40MS0xNi41MywwLTMuOTIsLjUxLTcuNjksMS41My0xMS4zLDEuMDItMy42MSwyLjQ3LTYuOTgsNC4zNS0xMC4xMiwxLjg4LTMuMTMsNC4xNC01Ljk4LDYuNzctOC41MywyLjYzLTIuNTUsNS41My00Ljc1LDguNzEtNi41OSwzLjE4LTEuODQsNi42MS0zLjI4LDEwLjMtNC4yOSwzLjY5LTEuMDIsNy41My0xLjUzLDExLjUzLTEuNTMsMy4zNywwLDYuNjUsLjM3LDkuODMsMS4xMiwzLjE4LC43NSw2LjIsMS44LDkuMDYsMy4xOCwyLjg2LDEuMzcsNS41MywzLjA0LDgsNSwyLjQ3LDEuOTYsNC42OSw0LjE2LDYuNjUsNi41OWwtOC4yNCw0LjcxYy0xLjQ5LTEuOC0zLjE2LTMuNDMtNS00Ljg4LTEuODQtMS40NS0zLjg0LTIuNjktNi0zLjcxLTIuMTYtMS4wMi00LjQzLTEuNzgtNi44My0yLjMtMi4zOS0uNTEtNC44NS0uNzctNy4zNi0uNzctMy4xNCwwLTYuMTQsLjM5LTksMS4xOC0yLjg2LC43OS01LjUzLDEuOS04LDMuMzUtMi40NywxLjQ2LTQuNzEsMy4yLTYuNzEsNS4yNC0yLDIuMDQtMy43Myw0LjI5LTUuMTgsNi43Ny0xLjQ1LDIuNDctMi41Nyw1LjE0LTMuMzUsOC0uNzksMi44Ny0xLjE4LDUuODMtMS4xOCw4Ljg5LDAsNC42MywuODYsOC45NiwyLjU5LDEzLDEuNzIsNC4wNCw0LjA4LDcuNTksNy4wNiwxMC42NSwyLjk4LDMuMDYsNi41MSw1LjQ2LDEwLjU5LDcuMTgsNC4wOCwxLjczLDguNDgsMi41OSwxMy4xOCwyLjU5LDIuNTksMCw1LjA2LS4yNiw3LjQyLS43NywyLjM1LS41MSw0LjYxLTEuMjcsNi43Ni0yLjI5LDIuMTYtMS4wMiw0LjE2LTIuMjYsNi0zLjcxLDEuODUtMS40NSwzLjU1LTMuMDgsNS4xMi00Ljg4bDguMTIsNC43MWMtNCw0Ljg3LTguODksOC43My0xNC42NSwxMS41OS01Ljc3LDIuODctMTIuMDYsNC4zLTE4Ljg5LDQuMy01Ljk2LDAtMTEuNTctMS4xMi0xNi44My0zLjM2WiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNNzY5LjA2LDE1Ny4zNVY3NC45N2gzMy4xOWM1LjQ5LDAsMTAuMzMsLjUxLDE0LjUzLDEuNTMsNC4yLDEuMDIsNy43MywyLjYzLDEwLjU5LDQuODMsMi44NiwyLjIsNS4wNCw1LjA2LDYuNTMsOC41OSwxLjQ5LDMuNTMsMi4yMyw3Ljc3LDIuMjMsMTIuNzEsMCwzLjM3LS4zNSw2LjM4LTEuMDYsOS0uNzEsMi42My0xLjczLDQuOTYtMy4wNiw3LTEuMzMsMi4wNC0yLjk4LDMuNzktNC45NCw1LjI0LTEuOTYsMS40NS00LjE4LDIuNjEtNi42NSwzLjQ3LTIuNDcsLjg2LTUuMjIsMS41MS04LjI0LDEuOTQtMy4wMiwuNDMtNi4yNiwuNjUtOS43MSwuNjVoLTI4LjI0bDQuMjQtNC4yNHYzMS42NmgtOS40MVptOS40MS0zMC42bC00LjI0LTQuMzVoMjcuNzdjNCwwLDcuNTEtLjM1LDEwLjUzLTEuMDYsMy4wMi0uNzEsNS41NS0xLjg1LDcuNTktMy40MSwyLjA0LTEuNTcsMy41OS0zLjU3LDQuNjUtNiwxLjA2LTIuNDMsMS41OS01LjQxLDEuNTktOC45NHMtLjUzLTYuNTUtMS41OS05LjA2Yy0xLjA2LTIuNTEtMi42MS00LjU3LTQuNjUtNi4xOC0yLjA0LTEuNjEtNC41Ny0yLjc2LTcuNTktMy40Ny0zLjAyLS43MS02LjU3LTEuMDYtMTAuNjUtMS4wNmgtMjcuNjZsNC4yNC00LjI0djQ3Ljc4WiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNODQxLjU2LDE1Ny4zNWwzNi43Mi04Mi4zOGgxMS44OWwzNi43Miw4Mi4zOGgtMTAuNzFsLTEwLjI0LTIyLjgzLDIuNDcsMS40MWgtNDguODRsMi44My0xLjMtMTAuMDEsMjIuNzFoLTEwLjgzWm0yMi40OC0yNy40MmwtMS40MS0xLjQxaDQyLjk1bC0uOTQsMS41My0yMC45NS00Ni40OWgxLjA2bC0yMC43MSw0Ni4zN1oiLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTk1MC44MywxNTYuNTljLTQuNjctMS4yOS04LjgxLTMuMTYtMTIuNDItNS41OWwzLjUzLTUuNTNjMS42NSwxLjAyLDMuMzksMS45Niw1LjI0LDIuODIsMS44NCwuODcsMy43NiwxLjU1LDUuNzcsMi4wNiwyLC41MSw0LC45Miw2LDEuMjQsMiwuMzEsMy45OCwuNDcsNS45NCwuNDdzMy45OC0uMTgsNS44My0uNTNjMS44NC0uMzUsMy40My0uOTIsNC43Ny0xLjcsMS4zMy0uNzksMi40MS0xLjc4LDMuMjMtMywuODItMS4yMiwxLjI0LTIuNjUsMS4yNC00LjMsMC0yLjA0LS4zNy0zLjY1LTEuMTItNC44Mi0uNzUtMS4xOC0xLjg2LTIuMTgtMy4zNS0zLTEuNDktLjgyLTMuNDEtMS41NS01Ljc3LTIuMTgtMi4zNS0uNjMtNS4xNC0xLjM3LTguMzUtMi4yNC0zLjQ1LS44Ni02LjQ2LTEuNzgtOS0yLjc2LTIuNTUtLjk4LTQuNjUtMi4wNi02LjMtMy4yNC0xLjY1LTEuMTctMi44Ny0yLjU5LTMuNjUtNC4yNC0uNzktMS42NS0xLjE4LTMuNjEtMS4xOC01Ljg4LDAtMi45LC41OS01LjQxLDEuNzctNy41MywxLjE4LTIuMTIsMi43Ni0zLjg3LDQuNzctNS4yNCwyLTEuMzcsNC4zNS0yLjM5LDcuMDYtMy4wNiwyLjcxLS42Nyw1LjU1LTEsOC41My0xLDQuMzEsMCw4LjUxLC41NSwxMi41OSwxLjY1LDQuMDgsMS4xLDcuNzMsMi42MywxMC45NCw0LjU5bC0zLjI5LDUuODhjLTEuNDktLjk0LTMuMDgtMS43NC00Ljc3LTIuNDEtMS42OS0uNjctMy4zOS0xLjI0LTUuMTItMS43MS0xLjczLS40Ny0zLjQ3LS44NC01LjI0LTEuMTItMS43Ny0uMjctMy40Ny0uNDEtNS4xMi0uNDEtMS44OCwwLTMuNjMsLjE4LTUuMjQsLjUzLTEuNjEsLjM1LTMsLjkyLTQuMTgsMS43LTEuMTgsLjc5LTIuMTIsMS43OS0yLjgzLDMtLjcxLDEuMjItMS4wNiwyLjY5LTEuMDYsNC40MiwwLDEuMDIsLjE5LDEuOTYsLjU5LDIuODIsLjM5LC44NywxLjEsMS42NSwyLjEyLDIuMzYsMS4wMiwuNzEsMi40NSwxLjQxLDQuMjksMi4xMiwxLjg1LC43MSw0LjI2LDEuNDUsNy4yNCwyLjI0LDMuNjgsLjk0LDcuMDIsMS44OCwxMCwyLjgyLDIuOTgsLjk0LDUuNTUsMi4wNCw3LjcxLDMuMywyLjE1LDEuMjUsMy44MiwyLjg4LDUsNC44OCwxLjE4LDIsMS43Nyw0LjU3LDEuNzcsNy43MSwwLDIuODMtLjYxLDUuMy0xLjgyLDcuNDItMS4yMiwyLjEyLTIuOTEsMy44Ni01LjA2LDUuMjQtMi4xNiwxLjM3LTQuNjUsMi40MS03LjQ3LDMuMTItMi44MywuNzEtNS44OCwxLjA2LTkuMTgsMS4wNi00Ljk0LDAtOS43NS0uNjUtMTQuNDEtMS45NFoiLz4KICA8L2c+Cjwvc3ZnPg==" alt="Titus CPAs" />
+    <h1>Submit a Lead</h1>
+    <p>Send us a potential client and it drops straight into the firm's Lead Tracker.</p>
+  </div>
+  <div class="wrap">
+    <div class="card" id="card">
+      <form id="f" autocomplete="off">
+        <div class="grid">
+          <div class="full"><label>Contact Name <span class="req">*</span></label><input id="name" placeholder="Jane Smith" required /></div>
+          <div><label>Company</label><input id="company" placeholder="Smith Industries" /></div>
+          <div><label>Email</label><input id="email" type="email" placeholder="jane@company.com" /></div>
+          <div><label>Phone</label><input id="phone" inputmode="tel" placeholder="(205) 555-0000" /></div>
+          <div><label>Est. Annual Fees</label><input id="value" inputmode="numeric" placeholder="$25,000" /></div>
+          <div><label>Client Tier</label><select id="tier"><option value="I">Tier I — Business anchor</option><option value="II" selected>Tier II — Personal w/ potential</option><option value="III">Tier III — Simple personal</option></select></div>
+          <div><label>Lead Source</label><select id="source"></select></div>
+          <div class="full"><label>Referred By</label><input id="referredBy" placeholder="Name / firm (optional)" /></div>
+          <div><label>Submitted By <span class="req">*</span></label><select id="origination"></select></div>
+          <div><label>First Next Step</label><select id="nextStep"></select></div>
+          <div class="full"><label>Notes</label><textarea id="notes" placeholder="How you met, what they need, anything the team should know…"></textarea></div>
+        </div>
+        <input class="hp" id="website" tabindex="-1" autocomplete="off" placeholder="Leave blank" />
+        <button class="btn" id="submit" type="submit">Submit Lead</button>
+        <div class="msg" id="msg"></div>
+      </form>
+    </div>
+    <div class="foot">Titus CPAs · Internal lead intake · Submissions appear in the Lead Tracker instantly.</div>
+  </div>
+<script>
+  var FN = "https://mxvxmpprqgwkujsceybk.supabase.co/functions/v1/submit-lead";
+  var SOURCES = ['Client Referral','Referral Partner','Financial Advisor','Friends and Family','Existing Client Expansion','Paid Ads (Meta / Google)','Website','LinkedIn','Networking Event','Google Search'];
+  var NEXT_STEPS = ['Book discovery call','Set up meeting','Send follow-up email','Send proposal / scope of services','Schedule intro call','Request documents to review','Add to nurture / newsletter list'];
+  var FALLBACK_OWNERS = ['Mat Cox','Sam Bellman','Tim Pitts','Hudson Pitts','Greg Roberson','Brian Krebs','Chris Self','Claire Owens','Braxton Bonner','Jennifer Crosby'];
+  function $(id){ return document.getElementById(id); }
+  function opt(v){ var o=document.createElement('option'); o.textContent=v; return o; }
+  function fill(sel, arr, placeholder){ sel.innerHTML=''; if(placeholder){ var p=opt(placeholder); p.value=''; sel.appendChild(p); } arr.forEach(function(v){ sel.appendChild(opt(v)); }); }
+  fill($('source'), SOURCES); $('source').value='Website';
+  fill($('nextStep'), NEXT_STEPS);
+  fill($('origination'), FALLBACK_OWNERS, 'Choose your name…');
+  // pull the live roster so the names always match the tracker
+  fetch(FN, { method:'GET' }).then(function(r){ return r.json(); }).then(function(d){
+    if(d && d.roster && d.roster.length){ fill($('origination'), d.roster.map(function(p){ return p.name; }), 'Choose your name…'); }
+  }).catch(function(){});
+  $('phone').addEventListener('input', function(){ var d=this.value.replace(/\D/g,'').slice(0,10); this.value = !d?'':d.length<4?'('+d:d.length<7?'('+d.slice(0,3)+') '+d.slice(3):'('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6); });
+  $('value').addEventListener('input', function(){ var d=this.value.replace(/[^0-9]/g,''); this.value = d?'$'+Number(d).toLocaleString('en-US'):''; });
+  $('f').addEventListener('submit', function(e){
+    e.preventDefault();
+    var msg=$('msg'); msg.className='msg'; msg.textContent='';
+    if(!$('name').value.trim()){ msg.className='msg err'; msg.textContent='Please enter a contact name.'; $('name').focus(); return; }
+    if(!$('origination').value){ msg.className='msg err'; msg.textContent='Please choose your name under "Submitted By".'; $('origination').focus(); return; }
+    var btn=$('submit'); btn.disabled=true; btn.textContent='Submitting…';
+    var body={ name:$('name').value, company:$('company').value, email:$('email').value, phone:$('phone').value, value:$('value').value, tier:$('tier').value, source:$('source').value, referredBy:$('referredBy').value, origination:$('origination').value, owner:$('origination').value, nextStep:$('nextStep').value, notes:$('notes').value, website:$('website').value };
+    fetch(FN, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+      .then(function(res){
+        if(res.ok && res.j && res.j.ok){
+          $('card').innerHTML = '<div class="done"><div class="chk">✓</div><h2>Lead submitted</h2><p>It\'s now in the Titus Lead Tracker. Thank you!</p><button class="link-btn" onclick="location.reload()">Submit another lead</button></div>';
+          window.scrollTo(0,0);
+        } else {
+          msg.className='msg err'; msg.textContent=(res.j && res.j.error) || 'Something went wrong. Please try again.';
+          btn.disabled=false; btn.textContent='Submit Lead';
+        }
+      })
+      .catch(function(){ msg.className='msg err'; msg.textContent='Network error. Please try again.'; btn.disabled=false; btn.textContent='Submit Lead'; });
+  });
+</script>
+</body>
+</html>
