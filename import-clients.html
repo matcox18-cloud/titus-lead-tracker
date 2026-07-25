@@ -1,0 +1,128 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Import Clients — Titus CPAs</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Hanken+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#132b49;--gold:#d1af44;--gold-deep:#b8942f;--ink:#1f2733;--muted:#6b7686;--line:#e4e7ec;--bg:#f4f2ec;--good:#2f7d4f;--bad:#c0392b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:'Hanken Grotesk',sans-serif;line-height:1.5}
+.head{background:var(--navy);color:#fff;text-align:center;padding:28px 24px}
+.head img{height:32px;margin-bottom:12px}.head h1{font-family:'Fraunces',serif;font-size:24px;margin:0}
+.head p{margin:6px 0 0;color:#cdd6e2;font-size:13.5px}
+.wrap{max-width:660px;margin:0 auto;padding:0 16px 50px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;margin-top:-16px;padding:22px;box-shadow:0 10px 30px rgba(19,43,73,.08)}
+label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+input{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font:inherit}
+input:focus{outline:none;border-color:var(--gold)}
+#pin{text-align:center;letter-spacing:6px;font-size:19px;font-weight:700;max-width:220px;margin:0 auto}
+.btn{display:block;width:100%;margin-top:16px;background:var(--gold);color:var(--navy);font-weight:700;font-size:15px;border:none;border-radius:10px;padding:13px;cursor:pointer}
+.btn:hover{background:var(--gold-deep);color:#fff}.btn:disabled{opacity:.55;cursor:default}
+.drop{border:2px dashed #d8cfae;border-radius:12px;background:#fbf9f3;padding:26px;text-align:center;color:var(--muted);font-size:14px}
+.note{font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.6}
+.stat{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.stat b{color:var(--navy)}.stat:last-child{border-bottom:none}
+.msg{margin-top:14px;font-size:13.5px;min-height:18px}.msg.err{color:var(--bad)}.msg.ok{color:var(--good)}
+.gate{text-align:center;padding:20px 0}
+h3{font-family:'Fraunces',serif;color:var(--navy);margin:0 0 10px;font-size:18px}
+</style></head><body>
+<div class="head"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAwIDE5NC4zMSI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jbHMtMSB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQoKICAgICAgLmNscy0yIHsKICAgICAgICBmaWxsOiAjZDFhZjQ0OwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8Zz4KICAgIDxwb2x5Z29uIGNsYXNzPSJjbHMtMiIgcG9pbnRzPSI2Ni44NCA3MC4xNCAxMDIuODUgNzAuMTQgMTAyLjg1IDE4Mi44IDExMi45MiAxODIuOCAxMTIuOTIgNzAuMTQgMTQ4LjkzIDcwLjE0IDE0OC45MyA2MC4wNyA2Ni44NCA2MC4wNyA2Ni44NCA3MC4xNCIvPgogICAgPHJlY3QgY2xhc3M9ImNscy0yIiB4PSI1Mi4zMiIgeT0iMTAuOTQiIHdpZHRoPSIxMTAuNzciIGhlaWdodD0iMTAuMDciLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMiIgZD0iTTY4LjcyLDg0LjY5aC0xLjg4djEwLjA3aDEuODhjNS4xNSwwLDkuMzQsNC4xOSw5LjM0LDkuMzR2NzguNzFoMTAuMDdWMTA0LjFjMC0xMC43LTguNzEtMTkuNDEtMTkuNDEtMTkuNDFaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Ik0xMjcuNjQsMTA0LjF2NzguNzFoMTAuMDdWMTA0LjFjMC01LjE1LDQuMTktOS4zNCw5LjM0LTkuMzRoMS44OHYtMTAuMDdoLTEuODhjLTEwLjcsMC0xOS40MSw4LjcxLTE5LjQxLDE5LjQxWiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0yIiBkPSJNMTg1LjUsMzUuNDNIMzAuMjhjLTEyLjA4LDAtMjEuOSw5LjgyLTIxLjksMjEuOXM5LjgyLDIxLjksMjEuOSwyMS45YzExLjE0LDAsMjAuMjYtOC4zOSwyMS42Mi0xOS4xNmgtMTAuMTVjLTEuMjQsNS4yLTUuOSw5LjA5LTExLjQ4LDkuMDktNi41MiwwLTExLjgzLTUuMzEtMTEuODMtMTEuODNzNS4zMS0xMS44MywxMS44My0xMS44M0gxODUuNWM2LjUyLDAsMTEuODMsNS4zMSwxMS44MywxMS44M3MtNS4zMSwxMS44My0xMS44MywxMS44M2MtNS41OCwwLTEwLjI0LTMuODktMTEuNDgtOS4wOWgtMTAuMTVjMS4zNiwxMC43NywxMC40OSwxOS4xNiwyMS42MiwxOS4xNiwxMi4wOCwwLDIxLjktOS44MiwyMS45LTIxLjlzLTkuODItMjEuOS0yMS45LTIxLjlaIi8+CiAgPC9nPgogIDxnPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMzUwLjQxLDM1LjM5djM0LjgyaC0yLjk1Yy0xLjM5LTMxLjAxLTM4LjI4LTMxLjg3LTM4LjI4LTMxLjg3aC0zLjI5djk4LjA1YzAsMTEuNzgsNy40NSwxOC4wMSwxNC43MiwxOC4wMXYyLjk1aC01NC41N3YtMi45NWM3LjI4LDAsMTQuNzMtNi4yMywxNC43My0xOC4wMVYzOC4zNGgtMy4yOXMtMzYuNzMsLjg3LTM4LjExLDMxLjg3aC0yLjk1VjM1LjM5aDExMy45OVoiLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTM5Ni44OSwxNTQuNDF2Mi45NWgtMzUuNTJ2LTIuOTVjNi41OC0yLjA4LDYuOTMtOS4zNSw2LjkzLTE4LjE5di0zOC40NmMwLTUuODktMS43My04LjMyLTguODQtMTIuMTN2LTIuOTRsMzAuMzItNi45M3Y2MC40NmMwLDkuNywuODcsMTYuNDYsNy4xLDE4LjE5Wm0tMTkuNTgtOTIuNTFjLTYuNTgsMC0xMS43OC01LjItMTEuNzgtMTEuNzhzNS4yLTExLjc4LDExLjc4LTExLjc4LDExLjk1LDUuMTksMTEuOTUsMTEuNzgtNS4zNywxMS43OC0xMS45NSwxMS43OFoiLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTQ2MC40NywxNDAuNTVsMi42LDEuNTZjLTMuNDYsOC4xNC0xNC4wMywxNi44LTI1LjY0LDE2LjgtMTMuNjksMC0yMS44My01LjU0LTIxLjgzLTI2LjV2LTUyLjE0aC04LjY2bC0uNTItMi45NWg5LjE4di0yMy4yMWwyMS42NS0zLjY0djI2Ljg1aDIwLjYxbC0uNjksMi45NWgtMTkuOTJ2NTEuNjJjMCw5LjcsNC4xNiwxNC43MywxMi44MiwxNC43Myw1LjAyLDAsOC44NC0zLjQ3LDEwLjM5LTYuMDdaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik01MjQuMjMsMTQ2Ljc5Yy02LjIzLDYuOTMtMTYuOCwxMi4xMi0yNC45NSwxMi4xMi0xMy42OSwwLTIxLjgzLTUuNzEtMjEuODMtMjYuNXYtMzcuMDdjMC0xMC4zOSwuMzUtMTEuOTUtOS43LTEzLjM0di0yLjk0bDMxLjE4LTMuMjl2NTYuMTNjMCw5LjcsNC41LDE0LjM4LDE0LjU1LDE0LjM4LDIuNiwwLDUuNzEtLjY5LDguNjYtMi45NWwyLjA4LDMuNDdabTM0LjgyLDQuNXYyLjk0bC0yNS42NCw0LjVjLTQuNjgsLjY5LTQuODUtMy4yOS00Ljg1LTMuMjl2LTU5LjU5YzAtMTAuNTcsLjY5LTEyLjgyLTguMTQtMTMuODZ2LTIuOTRsMjkuOC0zLjI5djY1LjY2YzAsOC4zMSwxLjU2LDkuMDEsOC44NCw5Ljg3WiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNNjI2LjQ1LDE0OS41NnMtNS43Miw4LjE0LTIwLjYyLDkuMTh2LTMuMjljOS4wMS0yLjc3LDkuMzYtMTUuOTQtMi40My0yMy43M2wtMTcuNDktMTAuNTdjLTE2LjgtMTAuMjItMjEuMzEtMjQuMjUtMTEuNzgtMzYuNzMsMCwwLDUuNzEtNy40NSwyMC40NC04LjQ5djMuMjljLTguNjYsMi40My0xMC45MSwxMy44NiwyLjQzLDIyLjM1bDE3LjQ5LDEwLjkxYzE1LjQyLDkuNTMsMjAuNjIsMjQuNiwxMS45NiwzNy4wN1ptLTI3Ljg5LDYuMjR2My4xMmMtMTguNTQtLjg3LTI3LjcyLTcuOTctMjcuNzItNy45N3YtMjEuODNoMi45NGMyLjQzLDYuNDEsNy40NSwyNC40MywyNC43NywyNi42OFptMy4yOS03Ni43NXYtMy4xMmMxNy4xNSwuNTIsMjQuNzcsNS4wMiwyNC43Nyw1LjAydjE5LjRoLTIuOTRjLTIuMDgtNS41NS02LjkzLTE5LjQtMjEuODMtMjEuMzFaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik02OTUuODcsMTU1LjE4Yy01LjI2LTIuMjMtOS44My01LjI1LTEzLjcxLTkuMDYtMy44OC0zLjgtNi45Ni04LjI3LTkuMjQtMTMuNDEtMi4yOC01LjE0LTMuNDEtMTAuNjUtMy40MS0xNi41MywwLTMuOTIsLjUxLTcuNjksMS41My0xMS4zLDEuMDItMy42MSwyLjQ3LTYuOTgsNC4zNS0xMC4xMiwxLjg4LTMuMTMsNC4xNC01Ljk4LDYuNzctOC41MywyLjYzLTIuNTUsNS41My00Ljc1LDguNzEtNi41OSwzLjE4LTEuODQsNi42MS0zLjI4LDEwLjMtNC4yOSwzLjY5LTEuMDIsNy41My0xLjUzLDExLjUzLTEuNTMsMy4zNywwLDYuNjUsLjM3LDkuODMsMS4xMiwzLjE4LC43NSw2LjIsMS44LDkuMDYsMy4xOCwyLjg2LDEuMzcsNS41MywzLjA0LDgsNSwyLjQ3LDEuOTYsNC42OSw0LjE2LDYuNjUsNi41OWwtOC4yNCw0LjcxYy0xLjQ5LTEuOC0zLjE2LTMuNDMtNS00Ljg4LTEuODQtMS40NS0zLjg0LTIuNjktNi0zLjcxLTIuMTYtMS4wMi00LjQzLTEuNzgtNi44My0yLjMtMi4zOS0uNTEtNC44NS0uNzctNy4zNi0uNzctMy4xNCwwLTYuMTQsLjM5LTksMS4xOC0yLjg2LC43OS01LjUzLDEuOS04LDMuMzUtMi40NywxLjQ2LTQuNzEsMy4yLTYuNzEsNS4yNC0yLDIuMDQtMy43Myw0LjI5LTUuMTgsNi43Ny0xLjQ1LDIuNDctMi41Nyw1LjE0LTMuMzUsOC0uNzksMi44Ny0xLjE4LDUuODMtMS4xOCw4Ljg5LDAsNC42MywuODYsOC45NiwyLjU5LDEzLDEuNzIsNC4wNCw0LjA4LDcuNTksNy4wNiwxMC42NSwyLjk4LDMuMDYsNi41MSw1LjQ2LDEwLjU5LDcuMTgsNC4wOCwxLjczLDguNDgsMi41OSwxMy4xOCwyLjU5LDIuNTksMCw1LjA2LS4yNiw3LjQyLS43NywyLjM1LS41MSw0LjYxLTEuMjcsNi43Ni0yLjI5LDIuMTYtMS4wMiw0LjE2LTIuMjYsNi0zLjcxLDEuODUtMS40NSwzLjU1LTMuMDgsNS4xMi00Ljg4bDguMTIsNC43MWMtNCw0Ljg3LTguODksOC43My0xNC42NSwxMS41OS01Ljc3LDIuODctMTIuMDYsNC4zLTE4Ljg5LDQuMy01Ljk2LDAtMTEuNTctMS4xMi0xNi44My0zLjM2WiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNNzY5LjA2LDE1Ny4zNVY3NC45N2gzMy4xOWM1LjQ5LDAsMTAuMzMsLjUxLDE0LjUzLDEuNTMsNC4yLDEuMDIsNy43MywyLjYzLDEwLjU5LDQuODMsMi44NiwyLjIsNS4wNCw1LjA2LDYuNTMsOC41OSwxLjQ5LDMuNTMsMi4yMyw3Ljc3LDIuMjMsMTIuNzEsMCwzLjM3LS4zNSw2LjM4LTEuMDYsOS0uNzEsMi42My0xLjczLDQuOTYtMy4wNiw3LTEuMzMsMi4wNC0yLjk4LDMuNzktNC45NCw1LjI0LTEuOTYsMS40NS00LjE4LDIuNjEtNi42NSwzLjQ3LTIuNDcsLjg2LTUuMjIsMS41MS04LjI0LDEuOTQtMy4wMiwuNDMtNi4yNiwuNjUtOS43MSwuNjVoLTI4LjI0bDQuMjQtNC4yNHYzMS42NmgtOS40MVptOS40MS0zMC42bC00LjI0LTQuMzVoMjcuNzdjNCwwLDcuNTEtLjM1LDEwLjUzLTEuMDYsMy4wMi0uNzEsNS41NS0xLjg1LDcuNTktMy40MSwyLjA0LTEuNTcsMy41OS0zLjU3LDQuNjUtNiwxLjA2LTIuNDMsMS41OS01LjQxLDEuNTktOC45NHMtLjUzLTYuNTUtMS41OS05LjA2Yy0xLjA2LTIuNTEtMi42MS00LjU3LTQuNjUtNi4xOC0yLjA0LTEuNjEtNC41Ny0yLjc2LTcuNTktMy40Ny0zLjAyLS43MS02LjU3LTEuMDYtMTAuNjUtMS4wNmgtMjcuNjZsNC4yNC00LjI0djQ3Ljc4WiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNODQxLjU2LDE1Ny4zNWwzNi43Mi04Mi4zOGgxMS44OWwzNi43Miw4Mi4zOGgtMTAuNzFsLTEwLjI0LTIyLjgzLDIuNDcsMS40MWgtNDguODRsMi44My0xLjMtMTAuMDEsMjIuNzFoLTEwLjgzWm0yMi40OC0yNy40MmwtMS40MS0xLjQxaDQyLjk1bC0uOTQsMS41My0yMC45NS00Ni40OWgxLjA2bC0yMC43MSw0Ni4zN1oiLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTk1MC44MywxNTYuNTljLTQuNjctMS4yOS04LjgxLTMuMTYtMTIuNDItNS41OWwzLjUzLTUuNTNjMS42NSwxLjAyLDMuMzksMS45Niw1LjI0LDIuODIsMS44NCwuODcsMy43NiwxLjU1LDUuNzcsMi4wNiwyLC41MSw0LC45Miw2LDEuMjQsMiwuMzEsMy45OCwuNDcsNS45NCwuNDdzMy45OC0uMTgsNS44My0uNTNjMS44NC0uMzUsMy40My0uOTIsNC43Ny0xLjcsMS4zMy0uNzksMi40MS0xLjc4LDMuMjMtMywuODItMS4yMiwxLjI0LTIuNjUsMS4yNC00LjMsMC0yLjA0LS4zNy0zLjY1LTEuMTItNC44Mi0uNzUtMS4xOC0xLjg2LTIuMTgtMy4zNS0zLTEuNDktLjgyLTMuNDEtMS41NS01Ljc3LTIuMTgtMi4zNS0uNjMtNS4xNC0xLjM3LTguMzUtMi4yNC0zLjQ1LS44Ni02LjQ2LTEuNzgtOS0yLjc2LTIuNTUtLjk4LTQuNjUtMi4wNi02LjMtMy4yNC0xLjY1LTEuMTctMi44Ny0yLjU5LTMuNjUtNC4yNC0uNzktMS42NS0xLjE4LTMuNjEtMS4xOC01Ljg4LDAtMi45LC41OS01LjQxLDEuNzctNy41MywxLjE4LTIuMTIsMi43Ni0zLjg3LDQuNzctNS4yNCwyLTEuMzcsNC4zNS0yLjM5LDcuMDYtMy4wNiwyLjcxLS42Nyw1LjU1LTEsOC41My0xLDQuMzEsMCw4LjUxLC41NSwxMi41OSwxLjY1LDQuMDgsMS4xLDcuNzMsMi42MywxMC45NCw0LjU5bC0zLjI5LDUuODhjLTEuNDktLjk0LTMuMDgtMS43NC00Ljc3LTIuNDEtMS42OS0uNjctMy4zOS0xLjI0LTUuMTItMS43MS0xLjczLS40Ny0zLjQ3LS44NC01LjI0LTEuMTItMS43Ny0uMjctMy40Ny0uNDEtNS4xMi0uNDEtMS44OCwwLTMuNjMsLjE4LTUuMjQsLjUzLTEuNjEsLjM1LTMsLjkyLTQuMTgsMS43LTEuMTgsLjc5LTIuMTIsMS43OS0yLjgzLDMtLjcxLDEuMjItMS4wNiwyLjY5LTEuMDYsNC40MiwwLDEuMDIsLjE5LDEuOTYsLjU5LDIuODIsLjM5LC44NywxLjEsMS42NSwyLjEyLDIuMzYsMS4wMiwuNzEsMi40NSwxLjQxLDQuMjksMi4xMiwxLjg1LC43MSw0LjI2LDEuNDUsNy4yNCwyLjI0LDMuNjgsLjk0LDcuMDIsMS44OCwxMCwyLjgyLDIuOTgsLjk0LDUuNTUsMi4wNCw3LjcxLDMuMywyLjE1LDEuMjUsMy44MiwyLjg4LDUsNC44OCwxLjE4LDIsMS43Nyw0LjU3LDEuNzcsNy43MSwwLDIuODMtLjYxLDUuMy0xLjgyLDcuNDItMS4yMiwyLjEyLTIuOTEsMy44Ni01LjA2LDUuMjQtMi4xNiwxLjM3LTQuNjUsMi40MS03LjQ3LDMuMTItMi44MywuNzEtNS44OCwxLjA2LTkuMTgsMS4wNi00Ljk0LDAtOS43NS0uNjUtMTQuNDEtMS45NFoiLz4KICA8L2c+Cjwvc3ZnPg==" alt="Titus CPAs"><h1>Import Clients</h1><p>Load your TaxDome contact export into the Legacy Builder client list.</p></div>
+<div class="wrap">
+  <div class="card" id="gateCard"><div class="gate">
+    <h3>Team access</h3><p class="note" style="margin-bottom:14px">Enter the access PIN to continue.</p>
+    <form id="gateForm"><input id="pin" maxlength="8" inputmode="numeric" placeholder="PIN"><button class="btn" id="unlock" type="submit" style="max-width:220px;margin:14px auto 0">Unlock</button><div class="msg" id="gateMsg"></div></form>
+  </div></div>
+
+  <div class="card" id="mainCard" style="display:none">
+    <h3>1 · Choose your TaxDome export</h3>
+    <div class="drop"><input type="file" id="file" accept=".csv,text/csv"><div class="note" style="margin-top:8px">Clients &rarr; Accounts &rarr; export, or the Contacts export. The file is read <b>in your browser</b> &mdash; Social Security numbers and notes are stripped and never uploaded.</div></div>
+    <div id="preview" style="display:none;margin-top:18px">
+      <h3>2 · Review</h3><div id="stats"></div>
+      <button class="btn" id="go">Import into Legacy Builder</button>
+      <div class="msg" id="msg"></div>
+    </div>
+  </div>
+  <div class="note" style="text-align:center">Titus CPAs &middot; Internal tool</div>
+</div>
+<script>
+var FN="https://mxvxmpprqgwkujsceybk.supabase.co/functions/v1/import-clients";
+var PIN="",ROWS=[];
+function $(i){return document.getElementById(i)}
+$('gateForm').addEventListener('submit',function(e){e.preventDefault();
+  var v=$('pin').value.trim(); if(!v){return}
+  PIN=v; $('gateCard').style.display='none'; $('mainCard').style.display='block';
+});
+// --- tiny CSV parser (handles quotes/newlines) ---
+function parseCSV(t){var r=[],f=[],c='',q=false;t=t.replace(/^﻿/,'');
+ for(var i=0;i<t.length;i++){var ch=t[i];
+  if(q){ if(ch=='"'){ if(t[i+1]=='"'){c+='"';i++} else q=false } else c+=ch }
+  else { if(ch=='"')q=true; else if(ch==','){f.push(c);c=''} else if(ch=='\r'){}
+    else if(ch=='\n'){f.push(c);r.push(f);f=[];c=''} else c+=ch } }
+ if(c.length||f.length){f.push(c);r.push(f)} return r}
+var ENT=/\b(LLC|L\.L\.C|INC|INCORPORATED|CORP|CPA|PLLC|LLP|LTD|TRUST|ESTATE|FOUNDATION|FARMS?|CHURCH|COMPANY|HOLDINGS?|PROPERTIES|PARTNERS|PARTNERSHIP|GROUP|SERVICES|SOLUTIONS|ASSOCIATES|MANAGEMENT|ENTERPRISES|VENTURES|CAPITAL|EXCHANGE|SALON|STUDIO|CENTER|CLINIC|BANK|FUND|REALTY|CONSTRUCTION|TRANSPORT|DISTRIBUTORS?|ACCOUNTING|SUPPLY|DESIGN|MEDIA|LOGISTICS|TRANSFER|PAPER|INSURANCE)\b/i;
+var APOS=/['’]s\b/i, SUF=['jr','sr','ii','iii','iv','v'];
+function toks(s){s=(s||'').replace(/\(.*?\)/g,'').replace(/\./g,' ');return s.split(/\s+/).filter(function(t){return t&&SUF.indexOf(t.toLowerCase())<0})}
+function isPerson(s){s=(s||'').trim();return !!s&&s.indexOf('@')<0&&!ENT.test(s)&&!APOS.test(s)}
+function fromAcct(a){a=(a||'').trim();if(!a||ENT.test(a)||a.indexOf(',')<0)return null;
+ var p=a.split(','),last=p[0],rest=p.slice(1).join(',').split(/\s+(?:and|&)\s+/i)[0];
+ var ft=toks(rest),lt=toks(last); if(!ft.length||!lt.length||ft[0].length<2)return null; return [ft[0],lt[0]]}
+function fromPlain(s){s=(s||'').trim(); if(!s||s.indexOf('@')>=0||ENT.test(s)||APOS.test(s)||s.indexOf(',')>=0)return null;
+ var t=toks(s); if(t.length<2||t[0].length<2||t[t.length-1].length<2)return null; return [t[0],t[t.length-1]]}
+$('file').addEventListener('change',function(){
+  var f=this.files[0]; if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    var rows=parseCSV(String(rd.result)); if(rows.length<2){alert('Empty file');return}
+    var hdr=rows[0].map(function(h){return (h||'').trim()});
+    function idx(n){return hdr.indexOf(n)}
+    var iEmail=idx('Email'),iPref=idx('Preferred Email'),iFirst=idx('First Name'),iLast=idx('Last Name'),
+        iName=idx('Contact Name'),iCo=idx('Company Name'),iCity=idx('City'),iSt=idx('State / Province'),iTags=idx('Tags');
+    var links=[]; for(var k=0;k<hdr.length;k++) if(/^Linked account #/.test(hdr[k])) links.push(k);
+    var g=function(r,i){return i>=0&&r[i]!=null?String(r[i]).trim():''};
+    var byEmail={},order=[],noEmail=0;
+    for(var i=1;i<rows.length;i++){var r=rows[i]; if(!r||!r.length)continue;
+      var e=(g(r,iPref)||g(r,iEmail)).toLowerCase();
+      if(!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(e)){noEmail++;continue}
+      if(!byEmail[e]){byEmail[e]=[];order.push(e)} byEmail[e].push(r)}
+    ROWS=[];var dupPrevented=0,ents=0;
+    order.forEach(function(e){var ms=byEmail[e];dupPrevented+=ms.length-1;
+      var people=[];
+      ms.forEach(function(m){var fn=g(m,iFirst),ln=g(m,iLast);
+        if(isPerson(fn)&&fn.length>=2){var f=toks(fn)[0]||fn,l=toks(ln)[0]||'';
+          if(people.map(function(p){return p[0].toLowerCase()}).indexOf(f.toLowerCase())<0)people.push([f,l])}});
+      var isEnt=people.length===0;
+      if(isEnt){ ents++;
+        var ctx=ms.map(function(m){return g(m,iName)+' '+g(m,iCo)}).join(' ').toLowerCase(),cands=[];
+        ms.forEach(function(m){links.forEach(function(k){var p=fromAcct(g(m,k));if(p)cands.push(p)})});
+        var match=cands.filter(function(p){return p[1]&&ctx.indexOf(p[1].toLowerCase())>=0});
+        if(match.length)people=[match[0]];
+        else{for(var z=0;z<ms.length;z++){var p2=fromPlain(g(ms[z],iName));if(p2){people=[p2];break}}}}
+      var fs=people.map(function(p){return p[0]});
+      var greet = !fs.length?'there' : fs.length===1?fs[0] : fs.length===2?(fs[0]+' and '+fs[1]) : (fs.slice(0,-1).join(', ')+' and '+fs[fs.length-1]);
+      var accts=[];ms.forEach(function(m){links.forEach(function(k){var v=g(m,k);if(v&&accts.indexOf(v)<0)accts.push(v)})});
+      var tg={};ms.forEach(function(m){g(m,iTags).split(',').forEach(function(t){t=t.trim();if(t)tg[t]=1})});
+      ROWS.push({email:e,greeting:greet,first_name:people.length?people[0][0]:'',last_name:people.length?people[0][1]:'',
+        contact_name:g(ms[0],iName),company:g(ms[0],iCo),city:g(ms[0],iCity),state:g(ms[0],iSt),
+        tags:Object.keys(tg).join(','),is_entity:isEnt,household_size:ms.length,
+        household_names:ms.length>1?ms.map(function(m){return g(m,iName)}).join('; '):'',
+        account_count:accts.length,accounts:accts.join(' | ')});});
+    var multi=ROWS.filter(function(r){return r.account_count>1}).length;
+    var hh=ROWS.filter(function(r){return r.household_size>1}).length;
+    $('stats').innerHTML='<div class="stat"><span>Unique mailable clients</span><b>'+ROWS.length+'</b></div>'
+      +'<div class="stat"><span>Contacts with no email (skipped)</span><b>'+noEmail+'</b></div>'
+      +'<div class="stat"><span>Duplicate sends prevented</span><b>'+dupPrevented+'</b></div>'
+      +'<div class="stat"><span>Shared-email households</span><b>'+hh+'</b></div>'
+      +'<div class="stat"><span>Clients with 2+ accounts</span><b>'+multi+'</b></div>'
+      +'<div class="stat"><span>Business/entity records</span><b>'+ROWS.filter(function(r){return r.is_entity}).length+'</b></div>';
+    $('preview').style.display='block';
+  };
+  rd.readAsText(f);
+});
+$('go').addEventListener('click',function(){
+  if(!ROWS.length)return; var b=$('go'),m=$('msg');
+  b.disabled=true;b.textContent='Importing…';m.className='msg';m.textContent='';
+  fetch(FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:PIN,rows:ROWS})})
+   .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+   .then(function(res){
+     if(res.ok&&res.j.ok){m.className='msg ok';m.textContent='✓ Imported '+res.j.imported+' clients. Total in list: '+res.j.total_in_table+'.';b.textContent='Done'}
+     else{m.className='msg err';m.textContent=(res.j&&res.j.error)||'Import failed.';b.disabled=false;b.textContent='Import into Legacy Builder'}})
+   .catch(function(){m.className='msg err';m.textContent='Network error.';b.disabled=false;b.textContent='Import into Legacy Builder'});
+});
+</script></body></html>
