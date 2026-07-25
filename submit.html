@@ -35,6 +35,12 @@
   .done h2{ font-family:'Fraunces',Georgia,serif; font-weight:600; color:var(--navy); margin:0 0 6px; }
   .done p{ color:var(--muted); margin:0 0 18px; }
   .link-btn{ background:none; border:1px solid var(--line); color:var(--navy); border-radius:9px; padding:10px 18px; font-weight:600; cursor:pointer; width:auto; margin:0; }
+  .gate{ text-align:center; padding:26px 10px; }
+  .gate .lock{ width:52px; height:52px; border-radius:50%; background:#f4efdd; color:var(--gold-deep); display:flex; align-items:center; justify-content:center; font-size:24px; margin:0 auto 14px; }
+  .gate h2{ font-family:'Fraunces',Georgia,serif; font-weight:600; color:var(--navy); margin:0 0 6px; font-size:21px; }
+  .gate p{ color:var(--muted); margin:0 auto 16px; max-width:340px; font-size:13.5px; }
+  .pinrow{ max-width:240px; margin:0 auto; }
+  #pin{ text-align:center; letter-spacing:6px; font-size:20px; font-weight:700; }
   @media(max-width:560px){ .grid{ grid-template-columns:1fr; } }
 </style>
 </head>
@@ -45,7 +51,19 @@
     <p>Send us a potential client and it drops straight into the firm's Lead Tracker.</p>
   </div>
   <div class="wrap">
-    <div class="card" id="card">
+    <div class="card" id="gateCard">
+      <div class="gate">
+        <div class="lock">&#128274;</div>
+        <h2>Team access</h2>
+        <p>This form is for the Titus team. Enter the access PIN to continue.</p>
+        <form id="gateForm" class="pinrow" autocomplete="off">
+          <input id="pin" inputmode="numeric" maxlength="8" placeholder="PIN" aria-label="Access PIN" />
+          <button class="btn" id="unlock" type="submit">Unlock</button>
+          <div class="msg" id="gateMsg"></div>
+        </form>
+      </div>
+    </div>
+    <div class="card" id="formCard" style="display:none">
       <form id="f" autocomplete="off">
         <div class="grid">
           <div class="full"><label>Contact Name <span class="req">*</span></label><input id="name" placeholder="Jane Smith" required /></div>
@@ -53,49 +71,76 @@
           <div><label>Email</label><input id="email" type="email" placeholder="jane@company.com" /></div>
           <div><label>Phone</label><input id="phone" inputmode="tel" placeholder="(205) 555-0000" /></div>
           <div><label>Est. Annual Fees</label><input id="value" inputmode="numeric" placeholder="$25,000" /></div>
-          <div><label>Client Tier</label><select id="tier"><option value="I">Tier I — Business anchor</option><option value="II" selected>Tier II — Personal w/ potential</option><option value="III">Tier III — Simple personal</option></select></div>
+          <div><label>Client Tier</label><select id="tier"><option value="I">Tier I &mdash; Business anchor</option><option value="II" selected>Tier II &mdash; Personal w/ potential</option><option value="III">Tier III &mdash; Simple personal</option></select></div>
           <div><label>Lead Source</label><select id="source"></select></div>
           <div class="full"><label>Referred By</label><input id="referredBy" placeholder="Name / firm (optional)" /></div>
           <div><label>Submitted By <span class="req">*</span></label><select id="origination"></select></div>
           <div><label>First Next Step</label><select id="nextStep"></select></div>
-          <div class="full"><label>Notes</label><textarea id="notes" placeholder="How you met, what they need, anything the team should know…"></textarea></div>
+          <div class="full"><label>Notes</label><textarea id="notes" placeholder="How you met, what they need, anything the team should know&hellip;"></textarea></div>
         </div>
         <input class="hp" id="website" tabindex="-1" autocomplete="off" placeholder="Leave blank" />
         <button class="btn" id="submit" type="submit">Submit Lead</button>
         <div class="msg" id="msg"></div>
       </form>
     </div>
-    <div class="foot">Titus CPAs · Internal lead intake · Submissions appear in the Lead Tracker instantly.</div>
+    <div class="foot">Titus CPAs &middot; Internal lead intake &middot; Submissions appear in the Lead Tracker instantly.</div>
   </div>
 <script>
   var FN = "https://mxvxmpprqgwkujsceybk.supabase.co/functions/v1/submit-lead";
+  var PIN = "";
   var SOURCES = ['Client Referral','Referral Partner','Financial Advisor','Friends and Family','Existing Client Expansion','Paid Ads (Meta / Google)','Website','LinkedIn','Networking Event','Google Search'];
   var NEXT_STEPS = ['Book discovery call','Set up meeting','Send follow-up email','Send proposal / scope of services','Schedule intro call','Request documents to review','Add to nurture / newsletter list'];
-  var FALLBACK_OWNERS = ['Mat Cox','Sam Bellman','Tim Pitts','Hudson Pitts','Greg Roberson','Brian Krebs','Chris Self','Claire Owens','Braxton Bonner','Jennifer Crosby'];
   function $(id){ return document.getElementById(id); }
   function opt(v){ var o=document.createElement('option'); o.textContent=v; return o; }
   function fill(sel, arr, placeholder){ sel.innerHTML=''; if(placeholder){ var p=opt(placeholder); p.value=''; sel.appendChild(p); } arr.forEach(function(v){ sel.appendChild(opt(v)); }); }
-  fill($('source'), SOURCES); $('source').value='Website';
-  fill($('nextStep'), NEXT_STEPS);
-  fill($('origination'), FALLBACK_OWNERS, 'Choose your name…');
-  // pull the live roster so the names always match the tracker
-  fetch(FN, { method:'GET' }).then(function(r){ return r.json(); }).then(function(d){
-    if(d && d.roster && d.roster.length){ fill($('origination'), d.roster.map(function(p){ return p.name; }), 'Choose your name…'); }
-  }).catch(function(){});
-  $('phone').addEventListener('input', function(){ var d=this.value.replace(/\D/g,'').slice(0,10); this.value = !d?'':d.length<4?'('+d:d.length<7?'('+d.slice(0,3)+') '+d.slice(3):'('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6); });
-  $('value').addEventListener('input', function(){ var d=this.value.replace(/[^0-9]/g,''); this.value = d?'$'+Number(d).toLocaleString('en-US'):''; });
+
+  // ---- PIN gate ----
+  $('gateForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var gm=$('gateMsg'); gm.className='msg'; gm.textContent='';
+    var entered=$('pin').value.trim();
+    if(!entered){ gm.className='msg err'; gm.textContent='Enter the PIN.'; return; }
+    var btn=$('unlock'); btn.disabled=true; btn.textContent='Checking…';
+    fetch(FN + '?pin=' + encodeURIComponent(entered), { method:'GET' })
+      .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+      .then(function(res){
+        if(res.ok && res.j && res.j.roster){
+          PIN=entered;
+          fill($('source'), SOURCES); $('source').value='Website';
+          fill($('nextStep'), NEXT_STEPS);
+          var names=res.j.roster.map(function(p){ return p.name; });
+          fill($('origination'), names.length?names:['(no roster)'], 'Choose your name…');
+          $('gateCard').style.display='none';
+          $('formCard').style.display='block';
+          $('name').focus();
+        } else {
+          btn.disabled=false; btn.textContent='Unlock';
+          gm.className='msg err'; gm.textContent='Incorrect PIN. Please try again.';
+          $('pin').value=''; $('pin').focus();
+        }
+      })
+      .catch(function(){ btn.disabled=false; btn.textContent='Unlock'; gm.className='msg err'; gm.textContent='Network error. Please try again.'; });
+  });
+
+  // ---- input formatting ----
+  document.addEventListener('input', function(ev){
+    if(ev.target.id==='phone'){ var d=ev.target.value.replace(/\D/g,'').slice(0,10); ev.target.value = !d?'':d.length<4?'('+d:d.length<7?'('+d.slice(0,3)+') '+d.slice(3):'('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6); }
+    if(ev.target.id==='value'){ var n=ev.target.value.replace(/[^0-9]/g,''); ev.target.value = n?'$'+Number(n).toLocaleString('en-US'):''; }
+  });
+
+  // ---- submit ----
   $('f').addEventListener('submit', function(e){
     e.preventDefault();
     var msg=$('msg'); msg.className='msg'; msg.textContent='';
     if(!$('name').value.trim()){ msg.className='msg err'; msg.textContent='Please enter a contact name.'; $('name').focus(); return; }
     if(!$('origination').value){ msg.className='msg err'; msg.textContent='Please choose your name under "Submitted By".'; $('origination').focus(); return; }
     var btn=$('submit'); btn.disabled=true; btn.textContent='Submitting…';
-    var body={ name:$('name').value, company:$('company').value, email:$('email').value, phone:$('phone').value, value:$('value').value, tier:$('tier').value, source:$('source').value, referredBy:$('referredBy').value, origination:$('origination').value, owner:$('origination').value, nextStep:$('nextStep').value, notes:$('notes').value, website:$('website').value };
+    var body={ pin:PIN, name:$('name').value, company:$('company').value, email:$('email').value, phone:$('phone').value, value:$('value').value, tier:$('tier').value, source:$('source').value, referredBy:$('referredBy').value, origination:$('origination').value, owner:$('origination').value, nextStep:$('nextStep').value, notes:$('notes').value, website:$('website').value };
     fetch(FN, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) })
       .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
       .then(function(res){
         if(res.ok && res.j && res.j.ok){
-          $('card').innerHTML = '<div class="done"><div class="chk">✓</div><h2>Lead submitted</h2><p>It\'s now in the Titus Lead Tracker. Thank you!</p><button class="link-btn" onclick="location.reload()">Submit another lead</button></div>';
+          $('formCard').innerHTML = '<div class="done"><div class="chk">&#10003;</div><h2>Lead submitted</h2><p>It\'s now in the Titus Lead Tracker. Thank you!</p><button class="link-btn" onclick="location.reload()">Submit another lead</button></div>';
           window.scrollTo(0,0);
         } else {
           msg.className='msg err'; msg.textContent=(res.j && res.j.error) || 'Something went wrong. Please try again.';
