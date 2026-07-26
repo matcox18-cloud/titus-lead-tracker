@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Titus CPAs — Legacy Builder</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#132b49;--navy2:#1d3d63;--gold:#d1af44;--gold-deep:#b8942f;--ink:#1f2733;--muted:#6b7686;--line:#e4e7ec;--bg:#f4f2ec;--good:#2f7d4f;--danger:#c0392b;--amber:#b8860b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:'Hanken Grotesk',-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+a{color:inherit}
+.top{position:sticky;top:0;z-index:40;background:var(--navy);color:#fff;display:flex;align-items:center;gap:18px;padding:0 20px;height:58px}
+.top img{height:22px}
+.hublabel{font-size:10px;letter-spacing:1.4px;border:1px solid rgba(209,175,68,.5);color:var(--gold);border-radius:20px;padding:2px 9px}
+.tabs{display:flex;gap:4px;margin-left:14px}
+.tabs button{background:none;border:none;color:#c6d2e2;font:inherit;font-weight:600;font-size:14px;padding:8px 13px;border-radius:8px;cursor:pointer}
+.tabs button:hover{background:rgba(255,255,255,.08);color:#fff}
+.tabs button.on{background:var(--gold);color:var(--navy)}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12.5px;color:#c6d2e2}
+.av{width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;cursor:pointer}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
+h1.page{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:25px;margin:0 0 3px;color:var(--navy)}
+.psub{color:var(--muted);font-size:13.5px;margin:0 0 18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kpi .n{font-family:'Fraunces',Georgia,serif;font-size:26px;color:var(--navy);line-height:1.1}
+.kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-top:4px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:18px;overflow:hidden}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line)}
+.ph h3{margin:0;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:15.5px;color:var(--navy)}
+.hint{font-size:12px;color:var(--muted)}
+.bar{display:flex;align-items:center;gap:10px;padding:9px 16px}
+.bar .lab{width:112px;font-size:13px;color:var(--ink)}
+.bar .track{flex:1;height:16px;background:#efe9db;border-radius:8px;overflow:hidden}
+.bar .fill{height:100%;background:var(--navy)}
+.bar .val{width:120px;text-align:right;font-size:12.5px;color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+th{background:#faf7ef;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:9px 14px;border-bottom:1px solid var(--line)}
+td{padding:10px 14px;border-bottom:1px solid #f2f4f7;font-size:13.5px;vertical-align:middle}
+tbody tr:hover td{background:#faf7ef}
+tbody tr[data-em]{cursor:pointer}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--line)}
+input[type=search],input[type=text],input[type=email],select,textarea{border:1px solid var(--line);border-radius:9px;padding:9px 11px;font:inherit;font-size:14px;background:#fbfcfd;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);background:#fff}
+.grow{flex:1;min-width:200px}
+.pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:#fff;border-radius:20px;padding:5px 12px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer}
+.pill.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.tb{display:inline-block;font-size:10.5px;font-weight:700;border-radius:5px;padding:2px 7px}
+.t1{background:#e8f0e9;color:#2f7d4f}.t2{background:#e7edf5;color:#2b5f9e}.t3{background:#f7f0e0;color:#8a6d1f}
+.badge{display:inline-block;font-size:10.5px;font-weight:700;border-radius:5px;padding:2px 7px;background:#eef1f5;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:9px 15px;font:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
+.btn:hover{border-color:#cdbf9a}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:var(--navy)}
+.btn.gold:hover{background:var(--gold-deep);color:#fff}
+.btn.navy{background:var(--navy);border-color:var(--navy);color:#fff}
+.grp td{background:#f6f2e9;border-top:2px solid var(--line);font-weight:600}
+.gname{font-family:'Fraunces',Georgia,serif;color:var(--navy);font-size:14px}
+#login{position:fixed;inset:0;background:linear-gradient(160deg,#0f2440,#1d3d63);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+#login.show{display:flex}
+.login-card{background:#fff;border-radius:16px;padding:30px 28px;width:100%;max-width:390px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.login-card img{height:30px;margin-bottom:14px}
+.login-card h2{font-family:'Fraunces',Georgia,serif;font-weight:600;color:var(--navy);margin:0 0 4px;font-size:21px}
+.login-card .tag{font-style:italic;color:var(--muted);font-size:12.5px;margin-bottom:18px}
+.login-card label{display:block;text-align:left;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px}
+.login-card input{width:100%;margin-bottom:12px}
+.login-card .btn{width:100%}
+.login-msg{font-size:12.5px;margin-top:12px;min-height:18px}
+.login-foot{font-size:11.5px;color:var(--muted);margin-top:14px}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:#fff;box-shadow:-10px 0 40px rgba(19,43,73,.18);transform:translateX(100%);transition:.22s;z-index:90;overflow-y:auto}
+.drawer.show{transform:none}
+.ov{position:fixed;inset:0;background:rgba(19,43,73,.35);opacity:0;pointer-events:none;transition:.22s;z-index:80}
+.ov.show{opacity:1;pointer-events:auto}
+.dr-head{background:var(--navy);color:#fff;padding:20px 22px}
+.dr-head .nm{font-family:'Fraunces',Georgia,serif;font-size:21px}
+.dr-head .co{color:#c6d2e2;font-size:13px;margin-top:2px}
+.dr-body{padding:20px 22px}
+.fieldgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.f .l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.f .v{font-size:14px;color:var(--ink);margin-top:2px}
+.sect{font-family:'Fraunces',Georgia,serif;color:var(--navy);font-size:15px;margin:22px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.acct{font-size:13px;padding:6px 0;border-bottom:1px solid #f2f4f7}
+.empty{text-align:center;color:var(--muted);padding:40px 20px}
+@media(max-width:700px){.fieldgrid{grid-template-columns:1fr}.tabs button{padding:8px 9px;font-size:13px}}
+</style></head>
+<body>
+<div class="top">
+  <img id="brand" alt="Titus CPAs">
+  <span class="hublabel">LEGACY BUILDER</span>
+  <div class="tabs" id="tabs"></div>
+  <div class="right"><span id="cnt"></span><div class="av" id="av" title="Sign out"></div></div>
+</div>
+<div class="wrap" id="app"><div class="empty">Loading…</div></div>
+
+<div class="ov" id="ov"></div><div class="drawer" id="drawer"></div>
+
+<div id="login"><div class="login-card">
+  <img id="loginMark" alt="Titus CPAs">
+  <h2>Legacy Builder</h2>
+  <div class="tag">"We bring the structure. You build the legacy."</div>
+  <div id="emailStep">
+    <label>Work email</label>
+    <input id="loginEmail" type="email" placeholder="you@tituscpa.com" autocomplete="email">
+    <button class="btn navy" id="loginBtn">Send me a code</button>
+  </div>
+  <div id="codeStep" style="display:none">
+    <label>Enter the 6-digit code</label>
+    <input id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="● ● ● ● ● ●" style="text-align:center;letter-spacing:6px;font-size:19px">
+    <button class="btn navy" id="verifyBtn">Verify &amp; sign in</button>
+  </div>
+  <div class="login-msg" id="loginMsg"></div>
+  <div class="login-foot">A one-time 6-digit code is emailed to you — no password to remember.</div>
+</div></div>
+
+<script>
+const SUPABASE_URL='https://mxvxmpprqgwkujsceybk.supabase.co', SUPABASE_ANON_KEY='sb_publishable_zR4ghkZypguzB_sX4gFbCw_mZV2lSmH';
+const LOGO='data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAwIDE5NC4zMSI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jbHMtMSB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQoKICAgICAgLmNscy0yIHsKICAgICAgICBmaWxsOiAjZDFhZjQ0OwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8Zz4KICAgIDxwb2x5Z29uIGNsYXNzPSJjbHMtMiIgcG9pbnRzPSI2Ni44NCA3MC4xNCAxMDIuODUgNzAuMTQgMTAyLjg1IDE4Mi44IDExMi45MiAxODIuOCAxMTIuOTIgNzAuMTQgMTQ4LjkzIDcwLjE0IDE0OC45MyA2MC4wNyA2Ni44NCA2MC4wNyA2Ni44NCA3MC4xNCIvPgogICAgPHJlY3QgY2xhc3M9ImNscy0yIiB4PSI1Mi4zMiIgeT0iMTAuOTQiIHdpZHRoPSIxMTAuNzciIGhlaWdodD0iMTAuMDciLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMiIgZD0iTTY4LjcyLDg0LjY5aC0xLjg4djEwLjA3aDEuODhjNS4xNSwwLDkuMzQsNC4xOSw5LjM0LDkuMzR2NzguNzFoMTAuMDdWMTA0LjFjMC0xMC43LTguNzEtMTkuNDEtMTkuNDEtMTkuNDFaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Ik0xMjcuNjQsMTA0LjF2NzguNzFoMTAuMDdWMTA0LjFjMC01LjE1LDQuMTktOS4zNCw5LjM0LTkuMzRoMS44OHYtMTAuMDdoLTEuODhjLTEwLjcsMC0xOS40MSw4LjcxLTE5LjQxLDE5LjQxWiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0yIiBkPSJNMTg1LjUsMzUuNDNIMzAuMjhjLTEyLjA4LDAtMjEuOSw5LjgyLTIxLjksMjEuOXM5LjgyLDIxLjksMjEuOSwyMS45YzExLjE0LDAsMjAuMjYtOC4zOSwyMS42Mi0xOS4xNmgtMTAuMTVjLTEuMjQsNS4yLTUuOSw5LjA5LTExLjQ4LDkuMDktNi41MiwwLTExLjgzLTUuMzEtMTEuODMtMTEuODNzNS4zMS0xMS44MywxMS44My0xMS44M0gxODUuNWM2LjUyLDAsMTEuODMsNS4zMSwxMS44MywxMS44M3MtNS4zMSwxMS44My0xMS44MywxMS44M2MtNS41OCwwLTEwLjI0LTMuODktMTEuNDgtOS4wOWgtMTAuMTVjMS4zNiwxMC43NywxMC40OSwxOS4xNiwyMS42MiwxOS4xNiwxMi4wOCwwLDIxLjktOS44MiwyMS45LTIxLjlzLTkuODItMjEuOS0yMS45LTIxLjlaIi8+CiAgPC9nPgogIDxnPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMzUwLjQxLDM1LjM5djM0LjgyaC0yLjk1Yy0xLjM5LTMxLjAxLTM4LjI4LTMxLjg3LTM4LjI4LTMxLjg3aC0zLjI5djk4LjA1YzAsMTEuNzgsNy40NSwxOC4wMSwxNC43MiwxOC4wMXYyLjk1aC01NC41N3YtMi45NWM3LjI4LDAsMTQuNzMtNi4yMywxNC43My0xOC4wMVYzOC4zNGgtMy4yOXMtMzYuNzMsLjg3LTM4LjExLDMxLjg3aC0yLjk1VjM1LjM5aDExMy45OVoiLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTM5Ni44OSwxNTQuNDF2Mi45NWgtMzUuNTJ2LTIuOTVjNi41OC0yLjA4LDYuOTMtOS4zNSw2LjkzLTE4LjE5di0zOC40NmMwLTUuODktMS43My04LjMyLTguODQtMTIuMTN2LTIuOTRsMzAuMzItNi45M3Y2MC40NmMwLDkuNywuODcsMTYuNDYsNy4xLDE4LjE5Wm0tMTkuNTgtOTIuNTFjLTYuNTgsMC0xMS43OC01LjItMTEuNzgtMTEuNzhzNS4yLTExLjc4LDExLjc4LTExLjc4LDExLjk1LDUuMTksMTEuOTUsMTEuNzgtNS4zNywxMS43OC0xMS45NSwxMS43OFoiLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTQ2MC40NywxNDAuNTVsMi42LDEuNTZjLTMuNDYsOC4xNC0xNC4wMywxNi44LTI1LjY0LDE2LjgtMTMuNjksMC0yMS44My01LjU0LTIxLjgzLTI2LjV2LTUyLjE0aC04LjY2bC0uNTItMi45NWg5LjE4di0yMy4yMWwyMS42NS0zLjY0djI2Ljg1aDIwLjYxbC0uNjksMi45NWgtMTkuOTJ2NTEuNjJjMCw5LjcsNC4xNiwxNC43MywxMi44MiwxNC43Myw1LjAyLDAsOC44NC0zLjQ3LDEwLjM5LTYuMDdaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik01MjQuMjMsMTQ2Ljc5Yy02LjIzLDYuOTMtMTYuOCwxMi4xMi0yNC45NSwxMi4xMi0xMy42OSwwLTIxLjgzLTUuNzEtMjEuODMtMjYuNXYtMzcuMDdjMC0xMC4zOSwuMzUtMTEuOTUtOS43LTEzLjM0di0yLjk0bDMxLjE4LTMuMjl2NTYuMTNjMCw5LjcsNC41LDE0LjM4LDE0LjU1LDE0LjM4LDIuNiwwLDUuNzEtLjY5LDguNjYtMi45NWwyLjA4LDMuNDdabTM0LjgyLDQuNXYyLjk0bC0yNS42NCw0LjVjLTQuNjgsLjY5LTQuODUtMy4yOS00Ljg1LTMuMjl2LTU5LjU5YzAtMTAuNTcsLjY5LTEyLjgyLTguMTQtMTMuODZ2LTIuOTRsMjkuOC0zLjI5djY1LjY2YzAsOC4zMSwxLjU2LDkuMDEsOC44NCw5Ljg3WiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNNjI2LjQ1LDE0OS41NnMtNS43Miw4LjE0LTIwLjYyLDkuMTh2LTMuMjljOS4wMS0yLjc3LDkuMzYtMTUuOTQtMi40My0yMy43M2wtMTcuNDktMTAuNTdjLTE2LjgtMTAuMjItMjEuMzEtMjQuMjUtMTEuNzgtMzYuNzMsMCwwLDUuNzEtNy40NSwyMC40NC04LjQ5djMuMjljLTguNjYsMi40My0xMC45MSwxMy44NiwyLjQzLDIyLjM1bDE3LjQ5LDEwLjkxYzE1LjQyLDkuNTMsMjAuNjIsMjQuNiwxMS45NiwzNy4wN1ptLTI3Ljg5LDYuMjR2My4xMmMtMTguNTQtLjg3LTI3LjcyLTcuOTctMjcuNzItNy45N3YtMjEuODNoMi45NGMyLjQzLDYuNDEsNy40NSwyNC40MywyNC43NywyNi42OFptMy4yOS03Ni43NXYtMy4xMmMxNy4xNSwuNTIsMjQuNzcsNS4wMiwyNC43Nyw1LjAydjE5LjRoLTIuOTRjLTIuMDgtNS41NS02LjkzLTE5LjQtMjEuODMtMjEuMzFaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik02OTUuODcsMTU1LjE4Yy01LjI2LTIuMjMtOS44My01LjI1LTEzLjcxLTkuMDYtMy44OC0zLjgtNi45Ni04LjI3LTkuMjQtMTMuNDEtMi4yOC01LjE0LTMuNDEtMTAuNjUtMy40MS0xNi41MywwLTMuOTIsLjUxLTcuNjksMS41My0xMS4zLDEuMDItMy42MSwyLjQ3LTYuOTgsNC4zNS0xMC4xMiwxLjg4LTMuMTMsNC4xNC01Ljk4LDYuNzctOC41MywyLjYzLTIuNTUsNS41My00Ljc1LDguNzEtNi41OSwzLjE4LTEuODQsNi42MS0zLjI4LDEwLjMtNC4yOSwzLjY5LTEuMDIsNy41My0xLjUzLDExLjUzLTEuNTMsMy4zNywwLDYuNjUsLjM3LDkuODMsMS4xMiwzLjE4LC43NSw2LjIsMS44LDkuMDYsMy4xOCwyLjg2LDEuMzcsNS41MywzLjA0LDgsNSwyLjQ3LDEuOTYsNC42OSw0LjE2LDYuNjUsNi41OWwtOC4yNCw0LjcxYy0xLjQ5LTEuOC0zLjE2LTMuNDMtNS00Ljg4LTEuODQtMS40NS0zLjg0LTIuNjktNi0zLjcxLTIuMTYtMS4wMi00LjQzLTEuNzgtNi44My0yLjMtMi4zOS0uNTEtNC44NS0uNzctNy4zNi0uNzctMy4xNCwwLTYuMTQsLjM5LTksMS4xOC0yLjg2LC43OS01LjUzLDEuOS04LDMuMzUtMi40NywxLjQ2LTQuNzEsMy4yLTYuNzEsNS4yNC0yLDIuMDQtMy43Myw0LjI5LTUuMTgsNi43Ny0xLjQ1LDIuNDctMi41Nyw1LjE0LTMuMzUsOC0uNzksMi44Ny0xLjE4LDUuODMtMS4xOCw4Ljg5LDAsNC42MywuODYsOC45NiwyLjU5LDEzLDEuNzIsNC4wNCw0LjA4LDcuNTksNy4wNiwxMC42NSwyLjk4LDMuMDYsNi41MSw1LjQ2LDEwLjU5LDcuMTgsNC4wOCwxLjczLDguNDgsMi41OSwxMy4xOCwyLjU5LDIuNTksMCw1LjA2LS4yNiw3LjQyLS43NywyLjM1LS41MSw0LjYxLTEuMjcsNi43Ni0yLjI5LDIuMTYtMS4wMiw0LjE2LTIuMjYsNi0zLjcxLDEuODUtMS40NSwzLjU1LTMuMDgsNS4xMi00Ljg4bDguMTIsNC43MWMtNCw0Ljg3LTguODksOC43My0xNC42NSwxMS41OS01Ljc3LDIuODctMTIuMDYsNC4zLTE4Ljg5LDQuMy01Ljk2LDAtMTEuNTctMS4xMi0xNi44My0zLjM2WiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNNzY5LjA2LDE1Ny4zNVY3NC45N2gzMy4xOWM1LjQ5LDAsMTAuMzMsLjUxLDE0LjUzLDEuNTMsNC4yLDEuMDIsNy43MywyLjYzLDEwLjU5LDQuODMsMi44NiwyLjIsNS4wNCw1LjA2LDYuNTMsOC41OSwxLjQ5LDMuNTMsMi4yMyw3Ljc3LDIuMjMsMTIuNzEsMCwzLjM3LS4zNSw2LjM4LTEuMDYsOS0uNzEsMi42My0xLjczLDQuOTYtMy4wNiw3LTEuMzMsMi4wNC0yLjk4LDMuNzktNC45NCw1LjI0LTEuOTYsMS40NS00LjE4LDIuNjEtNi42NSwzLjQ3LTIuNDcsLjg2LTUuMjIsMS41MS04LjI0LDEuOTQtMy4wMiwuNDMtNi4yNiwuNjUtOS43MSwuNjVoLTI4LjI0bDQuMjQtNC4yNHYzMS42NmgtOS40MVptOS40MS0zMC42bC00LjI0LTQuMzVoMjcuNzdjNCwwLDcuNTEtLjM1LDEwLjUzLTEuMDYsMy4wMi0uNzEsNS41NS0xLjg1LDcuNTktMy40MSwyLjA0LTEuNTcsMy41OS0zLjU3LDQuNjUtNiwxLjA2LTIuNDMsMS41OS01LjQxLDEuNTktOC45NHMtLjUzLTYuNTUtMS41OS05LjA2Yy0xLjA2LTIuNTEtMi42MS00LjU3LTQuNjUtNi4xOC0yLjA0LTEuNjEtNC41Ny0yLjc2LTcuNTktMy40Ny0zLjAyLS43MS02LjU3LTEuMDYtMTAuNjUtMS4wNmgtMjcuNjZsNC4yNC00LjI0djQ3Ljc4WiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNODQxLjU2LDE1Ny4zNWwzNi43Mi04Mi4zOGgxMS44OWwzNi43Miw4Mi4zOGgtMTAuNzFsLTEwLjI0LTIyLjgzLDIuNDcsMS40MWgtNDguODRsMi44My0xLjMtMTAuMDEsMjIuNzFoLTEwLjgzWm0yMi40OC0yNy40MmwtMS40MS0xLjQxaDQyLjk1bC0uOTQsMS41My0yMC45NS00Ni40OWgxLjA2bC0yMC43MSw0Ni4zN1oiLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTk1MC44MywxNTYuNTljLTQuNjctMS4yOS04LjgxLTMuMTYtMTIuNDItNS41OWwzLjUzLTUuNTNjMS42NSwxLjAyLDMuMzksMS45Niw1LjI0LDIuODIsMS44NCwuODcsMy43NiwxLjU1LDUuNzcsMi4wNiwyLC41MSw0LC45Miw2LDEuMjQsMiwuMzEsMy45OCwuNDcsNS45NCwuNDdzMy45OC0uMTgsNS44My0uNTNjMS44NC0uMzUsMy40My0uOTIsNC43Ny0xLjcsMS4zMy0uNzksMi40MS0xLjc4LDMuMjMtMywuODItMS4yMiwxLjI0LTIuNjUsMS4yNC00LjMsMC0yLjA0LS4zNy0zLjY1LTEuMTItNC44Mi0uNzUtMS4xOC0xLjg2LTIuMTgtMy4zNS0zLTEuNDktLjgyLTMuNDEtMS41NS01Ljc3LTIuMTgtMi4zNS0uNjMtNS4xNC0xLjM3LTguMzUtMi4yNC0zLjQ1LS44Ni02LjQ2LTEuNzgtOS0yLjc2LTIuNTUtLjk4LTQuNjUtMi4wNi02LjMtMy4yNC0xLjY1LTEuMTctMi44Ny0yLjU5LTMuNjUtNC4yNC0uNzktMS42NS0xLjE4LTMuNjEtMS4xOC01Ljg4LDAtMi45LC41OS01LjQxLDEuNzctNy41MywxLjE4LTIuMTIsMi43Ni0zLjg3LDQuNzctNS4yNCwyLTEuMzcsNC4zNS0yLjM5LDcuMDYtMy4wNiwyLjcxLS42Nyw1LjU1LTEsOC41My0xLDQuMzEsMCw4LjUxLC41NSwxMi41OSwxLjY1LDQuMDgsMS4xLDcuNzMsMi42MywxMC45NCw0LjU5bC0zLjI5LDUuODhjLTEuNDktLjk0LTMuMDgtMS43NC00Ljc3LTIuNDEtMS42OS0uNjctMy4zOS0xLjI0LTUuMTItMS43MS0xLjczLS40Ny0zLjQ3LS44NC01LjI0LTEuMTItMS43Ny0uMjctMy40Ny0uNDEtNS4xMi0uNDEtMS44OCwwLTMuNjMsLjE4LTUuMjQsLjUzLTEuNjEsLjM1LTMsLjkyLTQuMTgsMS43LTEuMTgsLjc5LTIuMTIsMS43OS0yLjgzLDMtLjcxLDEuMjItMS4wNiwyLjY5LTEuMDYsNC40MiwwLDEuMDIsLjE5LDEuOTYsLjU5LDIuODIsLjM5LC44NywxLjEsMS42NSwyLjEyLDIuMzYsMS4wMiwuNzEsMi40NSwxLjQxLDQuMjksMi4xMiwxLjg1LC43MSw0LjI2LDEuNDUsNy4yNCwyLjI0LDMuNjgsLjk0LDcuMDIsMS44OCwxMCwyLjgyLDIuOTgsLjk0LDUuNTUsMi4wNCw3LjcxLDMuMywyLjE1LDEuMjUsMy44MiwyLjg4LDUsNC44OCwxLjE4LDIsMS43Nyw0LjU3LDEuNzcsNy43MSwwLDIuODMtLjYxLDUuMy0xLjgyLDcuNDItMS4yMiwyLjEyLTIuOTEsMy44Ni01LjA2LDUuMjQtMi4xNiwxLjM3LTQuNjUsMi40MS03LjQ3LDMuMTItMi44MywuNzEtNS44OCwxLjA2LTkuMTgsMS4wNi00Ljk0LDAtOS43NS0uNjUtMTQuNDEtMS45NFoiLz4KICA8L2c+Cjwvc3ZnPg==';
+document.getElementById('brand').src=LOGO; document.getElementById('loginMark').src=LOGO;
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+const $=i=>document.getElementById(i);
+let CLIENTS=[], SESSION=null, EMAIL='';
+let S={view:'dashboard', q:'', tier:'', group:'flat'};
+const TABS=[['dashboard','Dashboard'],['clients','Clients'],['email','Email & Marketing']];
+
+/* ---------- auth ---------- */
+async function init(){
+  const {data}=await sb.auth.getSession(); SESSION=data.session;
+  sb.auth.onAuthStateChange((_e,s)=>{SESSION=s; s?enter():showLogin();});
+  SESSION?enter():showLogin();
+}
+function showLogin(){ $('login').classList.add('show'); }
+async function enter(){
+  $('login').classList.remove('show');
+  EMAIL=(SESSION&&SESSION.user?SESSION.user.email:'')||'';
+  $('av').textContent=(EMAIL[0]||'?').toUpperCase();
+  await load(); renderTabs(); render();
+}
+$('loginBtn').onclick=async()=>{
+  const em=$('loginEmail').value.trim(); const m=$('loginMsg');
+  if(!em.includes('@')){m.style.color='var(--danger)';m.textContent='Enter a valid work email.';return;}
+  $('loginBtn').disabled=true;$('loginBtn').textContent='Sending…';
+  try{ const {error}=await sb.auth.signInWithOtp({email:em}); if(error)throw error;
+    window._em=em; $('emailStep').style.display='none'; $('codeStep').style.display='block';
+    m.style.color='var(--good)'; m.textContent='Code sent to '+em; $('loginCode').focus();
+  }catch(e){ m.style.color='var(--danger)'; m.textContent=e.message||'Could not send code.'; }
+  $('loginBtn').disabled=false;$('loginBtn').textContent='Send me a code';
+};
+$('verifyBtn').onclick=async()=>{
+  const t=$('loginCode').value.trim(); const m=$('loginMsg');
+  if(!/^\d{6}$/.test(t)){m.style.color='var(--danger)';m.textContent='Enter the 6-digit code.';return;}
+  $('verifyBtn').disabled=true;$('verifyBtn').textContent='Verifying…';
+  try{ let {error}=await sb.auth.verifyOtp({email:window._em,token:t,type:'email'});
+    if(error){const r=await sb.auth.verifyOtp({email:window._em,token:t,type:'signup'}); if(r.error)throw error;}
+    m.style.color='var(--good)'; m.textContent='Signed in — loading…';
+  }catch(e){ m.style.color='var(--danger)'; m.textContent=e.message||'That code did not work.'; }
+  $('verifyBtn').disabled=false;$('verifyBtn').textContent='Verify & sign in';
+};
+$('av').onclick=async()=>{ if(confirm('Sign out of Legacy Builder?')){ try{await sb.auth.signOut();}catch(e){} location.reload(); } };
+
+/* ---------- data ---------- */
+async function load(){
+  const {data,error}=await sb.from('clients').select('*').order('contact_name');
+  if(error){ $('app').innerHTML='<div class="empty">Could not load clients: '+error.message+'</div>'; return; }
+  CLIENTS=data||[];
+  $('cnt').textContent=active().length+' active clients';
+}
+const active=()=>CLIENTS.filter(c=>c.status==='active');
+const money=n=>'$'+Number(n||0).toLocaleString();
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const tierBadge=t=>t?'<span class="tb t'+t+'">Tier '+t+'</span>':'<span class="badge">—</span>';
+
+/* ---------- nav ---------- */
+function renderTabs(){
+  $('tabs').innerHTML=TABS.map(([id,l])=>'<button data-v="'+id+'" class="'+(S.view===id?'on':'')+'">'+l+'</button>').join('');
+  $('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.view=b.dataset.v;renderTabs();render();});
+}
+
+/* ---------- views ---------- */
+function render(){
+  $('app').innerHTML = S.view==='dashboard'?viewDash() : S.view==='clients'?viewClients() : viewEmail();
+  bind();
+}
+function viewDash(){
+  const a=active();
+  const byTier=[1,2,3].map(t=>({t,n:a.filter(c=>c.tier===t).length}));
+  const max=Math.max(...byTier.map(x=>x.n),1);
+  const target={1:20,2:60,3:20};
+  const bars=byTier.map(x=>{const pct=a.length?Math.round(100*x.n/a.length):0;
+    return '<div class="bar"><div class="lab">Tier '+x.t+'</div><div class="track"><div class="fill" style="width:'+(100*x.n/max)+'%"></div></div><div class="val">'+x.n+' · '+pct+'% <span class="hint">(goal '+target[x.t]+'%)</span></div></div>';}).join('');
+  const multi=a.filter(c=>c.account_count>1).length;
+  const deep=a.filter(c=>c.account_count>=5).sort((x,y)=>y.account_count-x.account_count).slice(0,8);
+  const deepRows=deep.map(c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'</b>'+(c.relationship_group?' <span class="badge">'+esc(c.relationship_group)+'</span>':'')+'</td><td>'+tierBadge(c.tier)+'</td><td style="text-align:right">'+c.account_count+' accounts</td></tr>').join('');
+  const review=CLIENTS.filter(c=>c.status==='review').length;
+  return '<h1 class="page">Client Dashboard</h1><p class="psub">Your book of business — '+a.length+' active clients.</p>'
+   +'<div class="kpis">'
+   +kpi(a.length,'Active clients')+kpi(a.filter(c=>c.tier===1).length,'Tier 1')
+   +kpi(multi,'Multi-entity clients')+kpi(CLIENTS.filter(c=>c.household_size>1).length,'Shared households')
+   +kpi(review,'Awaiting review')+'</div>'
+   +'<div class="panel"><div class="ph"><h3>Book by tier</h3><span class="hint">vs 20 / 60 / 20 target</span></div>'+bars+'<div style="height:8px"></div></div>'
+   +'<div class="panel"><div class="ph"><h3>Deepest relationships</h3><span class="hint">by entity count</span></div><table><tbody>'+deepRows+'</tbody></table></div>';
+}
+const kpi=(n,l)=>'<div class="kpi"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>';
+
+function viewClients(){
+  let list=active();
+  if(S.tier) list=list.filter(c=>String(c.tier)===S.tier);
+  if(S.q){const q=S.q.toLowerCase();
+    list=list.filter(c=>[c.contact_name,c.email,c.company,c.accounts,c.city,c.relationship_group].some(v=>(v||'').toLowerCase().includes(q)));}
+  const pills=['','1','2','3'].map(t=>'<span class="pill '+(S.tier===t?'on':'')+'" data-t="'+t+'">'+(t?'Tier '+t:'All tiers')+'</span>').join('');
+  let body;
+  if(S.group==='family'){
+    const groups={};
+    list.forEach(c=>{const k=c.relationship_group||c.household_names||c.contact_name; (groups[k]=groups[k]||[]).push(c);});
+    body=Object.keys(groups).sort().map(k=>{
+      const m=groups[k];
+      return '<tr class="grp"><td colspan="5"><span class="gname">'+esc(k)+'</span> <span class="hint">'+m.length+' contact'+(m.length>1?'s':'')+'</span></td></tr>'
+        +m.map(rowHtml).join('');
+    }).join('');
+  } else body=list.map(rowHtml).join('');
+  if(!body) body='<tr><td colspan="5"><div class="empty">No clients match.</div></td></tr>';
+  return '<h1 class="page">Clients</h1><p class="psub">'+list.length+' shown · click any row to open the record.</p>'
+   +'<div class="panel"><div class="toolbar"><input type="search" id="q" class="grow" placeholder="Search name, company, entity, city…" value="'+esc(S.q)+'">'
+   +pills
+   +'<span class="pill '+(S.group==='family'?'on':'')+'" data-g="'+(S.group==='family'?'flat':'family')+'">'+(S.group==='family'?'Grouped':'Group by relationship')+'</span></div>'
+   +'<table><thead><tr><th>Client</th><th>Tier</th><th>Entities</th><th>City</th><th>Email</th></tr></thead><tbody>'+body+'</tbody></table></div>';
+}
+const rowHtml=c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'</b>'
+  +(c.household_size>1?' <span class="badge">+'+(c.household_size-1)+'</span>':'')
+  +(c.is_principal?' <span class="tb t1">Principal</span>':'')+'</td>'
+  +'<td>'+tierBadge(c.tier)+'</td><td>'+(c.account_count||0)+'</td><td>'+esc(c.city||'')+'</td><td class="hint">'+esc(c.email)+'</td></tr>';
+
+function viewEmail(){
+  const a=active();
+  const uniq=new Set(a.map(c=>c.email.toLowerCase())).size;
+  return '<h1 class="page">Email &amp; Marketing</h1><p class="psub">Send The Bottom Line to your client list.</p>'
+   +'<div class="kpis">'+kpi(uniq,'Would receive')+kpi(a.filter(c=>c.tier===1).length,'Tier 1')+kpi(a.filter(c=>c.tier===2).length,'Tier 2')+kpi(a.filter(c=>c.tier===3).length,'Tier 3')+'</div>'
+   +'<div class="panel"><div class="ph"><h3>Sending is not connected yet</h3></div><div style="padding:18px"><p class="hint" style="margin:0 0 10px">The audience is live and de-duplicated — '+uniq+' unique inboxes. The Resend connection still needs wiring before anything can go out, so no email can be sent from here yet.</p>'
+   +'<a class="btn" href="newsletter-bottom-line-jul2026.html" target="_blank">Preview The Bottom Line ↗</a></div></div>';
+}
+
+/* ---------- drawer ---------- */
+function openRec(em){
+  const c=CLIENTS.find(x=>x.email===em); if(!c)return;
+  const accts=(c.accounts||'').split('|').map(s=>s.trim()).filter(Boolean);
+  $('drawer').innerHTML='<div class="dr-head"><div class="nm">'+esc(c.contact_name)+'</div><div class="co">'+esc(c.company||c.relationship_group||'')+'</div>'
+   +'<div style="margin-top:10px">'+tierBadge(c.tier)+' <span class="badge">'+esc(c.status)+'</span>'+(c.is_principal?' <span class="tb t1">Principal</span>':'')+'</div></div>'
+   +'<div class="dr-body"><div class="fieldgrid">'
+   +f('Greeting','Hi '+esc(c.greeting))+f('Email','<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>')
+   +f('City',esc([c.city,c.state].filter(Boolean).join(', ')||'—'))+f('Entities',(c.account_count||0)+'')
+   +f('Relationship',esc(c.relationship_group||'—'))+f('Tags',esc(c.tags||'—'))
+   +'</div>'
+   +(c.household_size>1?'<div class="sect">Household</div><div class="hint">'+esc(c.household_names)+'</div>':'')
+   +(c.notes?'<div class="sect">Notes</div><div style="font-size:13.5px">'+esc(c.notes)+'</div>':'')
+   +(accts.length?'<div class="sect">Entities &amp; returns ('+accts.length+')</div>'+accts.map(a=>'<div class="acct">'+esc(a)+'</div>').join(''):'')
+   +(c.departed_accounts?'<div class="sect">Closed / departed accounts</div><div class="hint">'+esc(c.departed_accounts)+'</div>':'')
+   +'<div style="margin-top:22px"><button class="btn" id="close">Close</button></div></div>';
+  $('drawer').classList.add('show'); $('ov').classList.add('show');
+  $('close').onclick=closeRec;
+}
+const f=(l,v)=>'<div class="f"><div class="l">'+l+'</div><div class="v">'+v+'</div></div>';
+function closeRec(){ $('drawer').classList.remove('show'); $('ov').classList.remove('show'); }
+$('ov').onclick=closeRec;
+
+function bind(){
+  const q=$('q'); if(q) q.oninput=()=>{S.q=q.value; const p=document.activeElement===q; render(); if(p){const n=$('q'); n.focus(); n.setSelectionRange(n.value.length,n.value.length);} };
+  document.querySelectorAll('[data-t]').forEach(el=>el.onclick=()=>{S.tier=el.dataset.t;render();});
+  document.querySelectorAll('[data-g]').forEach(el=>el.onclick=()=>{S.group=el.dataset.g;render();});
+  document.querySelectorAll('tr[data-em]').forEach(tr=>tr.onclick=()=>openRec(tr.dataset.em));
+}
+init();
+</script></body></html>
