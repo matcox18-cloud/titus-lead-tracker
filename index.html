@@ -38,6 +38,10 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .brand-text .b1{font-family:'Adamina',serif;font-weight:600;font-size:21px;color:#fff;letter-spacing:.2px}
 .brand-text .b2{font-size:9.5px;letter-spacing:3px;color:var(--gold);font-weight:600;margin-top:3px}
 .nav{padding:14px 12px;flex:1}
+.secsw{display:flex;background:rgba(255,255,255,.10);border-radius:20px;padding:3px;gap:2px;margin:14px 16px 4px}
+.secsw a{flex:1;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:12.5px;font-weight:700;color:#c6d2e2;padding:6px 10px;border-radius:20px;white-space:nowrap}
+.secsw a:hover{color:#fff;background:rgba(255,255,255,.08)}
+.secsw a.on{background:var(--gold);color:var(--navy)}
 .nav-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#6f86a3;padding:10px 12px 6px;font-weight:600}
 .nav-item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 12px;border-radius:10px;color:#bcc9da;font-weight:500;font-size:14px;margin-bottom:2px;transition:.15s}
 .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
@@ -324,6 +328,7 @@ tbody tr:last-child td{border-bottom:none}
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="brand" id="brandLogo"></div>
+    <div class="secsw"><a href="index.html" class="on">Groundwork</a><a href="legacy.html">Legacy Builder</a></div>
     <nav class="nav" id="navMenu">
       <div class="nav-label">Sales</div>
     </nav>
@@ -681,8 +686,6 @@ function renderNav(){
   ).join('')
   + (isAdmin() ? '<div class="nav-label" style="margin-top:10px">Admin</div>'
       + `<button class="nav-item ${state.view==='admin'?'active':''}" data-view="admin"><span style="display:flex">${svg(I.gear)}</span>Team &amp; Originators</button>` : '')
-  + '<div class="nav-label" style="margin-top:10px">Client Hub</div>'
-  + `<a class="nav-item" href="legacy.html"><span style="display:flex">${svg(I.users)}</span>Legacy Builder</a>`
   + '<div class="nav-label" style="margin-top:10px">Resources</div>'
   + `<button class="nav-item ${state.view==='help'?'active':''}" data-view="help"><span style="display:flex">${svg(I.book)}</span>Instructions</button>`;
   menu.querySelectorAll('.nav-item[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
