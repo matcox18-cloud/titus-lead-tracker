@@ -682,7 +682,7 @@ function renderNav(){
   + (isAdmin() ? '<div class="nav-label" style="margin-top:10px">Admin</div>'
       + `<button class="nav-item ${state.view==='admin'?'active':''}" data-view="admin"><span style="display:flex">${svg(I.gear)}</span>Team &amp; Originators</button>` : '')
   + '<div class="nav-label" style="margin-top:10px">Client Hub</div>'
-  + `<a class="nav-item" href="https://matcox18-cloud.github.io/titus-crm-preview/titus-client-hub-prototype.html#legacy" target="_blank" rel="noopener"><span style="display:flex">${svg(I.users)}</span>Legacy Builder ↗</a>`
+  + `<a class="nav-item" href="legacy.html"><span style="display:flex">${svg(I.users)}</span>Legacy Builder</a>`
   + '<div class="nav-label" style="margin-top:10px">Resources</div>'
   + `<button class="nav-item ${state.view==='help'?'active':''}" data-view="help"><span style="display:flex">${svg(I.book)}</span>Instructions</button>`;
   menu.querySelectorAll('.nav-item[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
