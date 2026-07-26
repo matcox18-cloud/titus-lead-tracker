@@ -131,7 +131,7 @@ async function enter(){
   $('login').classList.remove('show');
   EMAIL=(SESSION&&SESSION.user?SESSION.user.email:'')||'';
   $('av').textContent=(EMAIL[0]||'?').toUpperCase();
-  await load(); renderTabs(); render();
+  await load(); await loadSends(); renderTabs(); render();
 }
 $('loginBtn').onclick=async()=>{
   const em=$('loginEmail').value.trim(); const m=$('loginMsg');
@@ -228,13 +228,67 @@ const rowHtml=c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'<
   +'<td>'+tierBadge(c.tier)+'</td><td>'+(c.account_count||0)+'</td><td>'+esc(c.city||'')+'</td><td class="hint">'+esc(c.email)+'</td></tr>';
 
 function viewEmail(){
-  const a=active();
-  const uniq=new Set(a.map(c=>c.email.toLowerCase())).size;
-  return '<h1 class="page">Email &amp; Marketing</h1><p class="psub">Send The Bottom Line to your client list.</p>'
-   +'<div class="kpis">'+kpi(uniq,'Would receive')+kpi(a.filter(c=>c.tier===1).length,'Tier 1')+kpi(a.filter(c=>c.tier===2).length,'Tier 2')+kpi(a.filter(c=>c.tier===3).length,'Tier 3')+'</div>'
-   +'<div class="panel"><div class="ph"><h3>Sending is not connected yet</h3></div><div style="padding:18px"><p class="hint" style="margin:0 0 10px">The audience is live and de-duplicated — '+uniq+' unique inboxes. The Resend connection still needs wiring before anything can go out, so no email can be sent from here yet.</p>'
-   +'<a class="btn" href="newsletter-bottom-line-jul2026.html" target="_blank">Preview The Bottom Line ↗</a></div></div>';
+  const a=active().filter(c=>c.subscribed!==false);
+  const t=S.sendTier? a.filter(c=>c.tier===Number(S.sendTier)) : a;
+  const uniq=[...new Set(t.map(c=>c.email.toLowerCase()))].length;
+  const unsub=active().filter(c=>c.subscribed===false).length;
+  const pills=['','1','2','3'].map(v=>'<span class="pill '+(S.sendTier===v?'on':'')+'" data-st="'+v+'">'+(v?'Tier '+v:'All active clients')+'</span>').join('');
+  const hist=(S.sends||[]).map(s=>'<tr><td>'+esc(s.subject||'')+'</td><td>'+esc(s.audience||'')+'</td><td>'+(s.recipients||0)+'</td><td>'+(s.failed?('<span style="color:var(--danger)">'+s.failed+' failed</span>'):'ok')+'</td><td class="hint">'+new Date(s.created_at).toLocaleString()+'</td></tr>').join('')
+    || '<tr><td colspan="5"><div class="empty">No newsletters sent yet.</div></td></tr>';
+
+  return '<h1 class="page">Email &amp; Marketing</h1><p class="psub">Send The Bottom Line to your client list. Test on yourself first — always.</p>'
+  +'<div class="kpis">'+kpi(uniq,'Will receive')+kpi(a.filter(c=>c.tier===1).length,'Tier 1')+kpi(a.filter(c=>c.tier===2).length,'Tier 2')+kpi(a.filter(c=>c.tier===3).length,'Tier 3')+kpi(unsub,'Unsubscribed')+'</div>'
+
+  +'<div class="panel"><div class="ph"><h3>1 &middot; Who receives it</h3><span class="hint">de-duplicated by email</span></div>'
+  +'<div class="toolbar">'+pills+'</div>'
+  +'<div style="padding:0 16px 16px"><div style="font-family:Fraunces,Georgia,serif;font-size:30px;color:var(--navy)">'+uniq+'</div>'
+  +'<div class="hint">unique inbox'+(uniq===1?'':'es')+' · one email per person, never a shared To or BCC'
+  +(unsub?' · '+unsub+' unsubscribed and excluded':'')+'</div></div></div>'
+
+  +'<div class="panel"><div class="ph"><h3>2 &middot; What you are sending</h3><span class="hint">The Bottom Line · Issue 01</span></div>'
+  +'<div style="padding:16px"><label class="hint" style="display:block;margin-bottom:5px">Subject line</label>'
+  +'<input type="text" id="subj" style="width:100%" value="'+esc(S.subject||'The Bottom Line · Issue No. 01 · July 2026')+'">'
+  +'<div style="margin-top:14px;border:1px solid var(--line);border-radius:10px;overflow:hidden">'
+  +'<div style="background:#f3f1ea;border-bottom:1px solid var(--line);padding:8px 12px;font-size:11.5px;color:var(--muted)">Preview — this is the file that goes out</div>'
+  +'<iframe src="newsletter-bottom-line-jul2026.html" style="width:100%;height:420px;border:0;display:block;background:#fff"></iframe></div>'
+  +'<div class="hint" style="margin-top:8px">Personalised per client: the greeting becomes their name, and the unsubscribe link is unique to them.</div>'
+  +'</div></div>'
+
+  +'<div class="panel"><div class="ph"><h3>3 &middot; Test, then send</h3></div><div style="padding:16px">'
+  +'<button class="btn" id="btnTest">Send a test to me</button>'
+  +'<span class="hint" style="margin-left:10px">Goes only to your own address. Do this first.</span>'
+  +'<div id="testMsg" class="hint" style="margin-top:10px;min-height:16px"></div>'
+  +'<div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--line)">'
+  +'<div style="font-weight:700;color:var(--navy);margin-bottom:8px">Send to all '+uniq+' recipients</div>'
+  +'<div class="hint" style="margin-bottom:10px">Requires the mass-send passcode. This cannot be undone.</div>'
+  +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+  +'<input type="password" id="code" placeholder="Passcode" style="width:130px;text-align:center;letter-spacing:4px">'
+  +'<input type="text" id="confirm" placeholder="Type SEND" style="width:130px">'
+  +'<button class="btn gold" id="btnLive">Send to '+uniq+'</button></div>'
+  +'<div id="liveMsg" style="margin-top:10px;min-height:16px;font-size:13px"></div>'
+  +'</div></div></div>'
+
+  +'<div class="panel"><div class="ph"><h3>Send history</h3></div>'
+  +'<table><thead><tr><th>Subject</th><th>Audience</th><th>Recipients</th><th>Result</th><th>When</th></tr></thead><tbody>'+hist+'</tbody></table></div>';
 }
+
+async function loadSends(){
+  try{ const {data}=await sb.from('sends').select('*').order('created_at',{ascending:false}).limit(10); S.sends=data||[]; }catch(e){ S.sends=[]; }
+}
+async function getNewsletterHtml(){
+  const r=await fetch('newsletter-bottom-line-jul2026.html',{cache:'no-store'});
+  if(!r.ok) throw new Error('Could not load the newsletter file.');
+  return await r.text();
+}
+async function callSend(payload){
+  const {data}=await sb.auth.getSession();
+  const r=await fetch(SUPABASE_URL+'/functions/v1/send-newsletter',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+data.session.access_token},
+    body:JSON.stringify(payload)});
+  return {status:r.status, body:await r.json().catch(()=>({}))};
+}
+
 
 /* ---------- drawer ---------- */
 function openRec(em){
@@ -264,6 +318,39 @@ function bind(){
   document.querySelectorAll('[data-t]').forEach(el=>el.onclick=()=>{S.tier=el.dataset.t;render();});
   document.querySelectorAll('[data-g]').forEach(el=>el.onclick=()=>{S.group=el.dataset.g;render();});
   document.querySelectorAll('tr[data-em]').forEach(tr=>tr.onclick=()=>openRec(tr.dataset.em));
+  document.querySelectorAll('[data-st]').forEach(el=>el.onclick=()=>{S.sendTier=el.dataset.st;render();});
+  const sj=$('subj'); if(sj) sj.oninput=()=>{S.subject=sj.value;};
+  const bt=$('btnTest');
+  if(bt) bt.onclick=async()=>{
+    const m=$('testMsg'); bt.disabled=true; bt.textContent='Sending…'; m.style.color='var(--muted)'; m.textContent='';
+    try{
+      const html=await getNewsletterHtml();
+      const res=await callSend({mode:'test', subject:($('subj').value||'The Bottom Line'), html:html});
+      if(res.body && res.body.ok){ m.style.color='var(--good)'; m.textContent='✓ Test sent to '+res.body.sent_to+' — check your inbox (and spam).'; }
+      else { m.style.color='var(--danger)'; m.textContent=(res.body && res.body.error)||'Test send failed.'; }
+    }catch(e){ m.style.color='var(--danger)'; m.textContent=e.message||'Test send failed.'; }
+    bt.disabled=false; bt.textContent='Send a test to me';
+  };
+  const bl=$('btnLive');
+  if(bl) bl.onclick=async()=>{
+    const m=$('liveMsg'); const code=$('code').value.trim(); const conf=$('confirm').value.trim().toUpperCase();
+    const n=parseInt(bl.textContent.replace(/\D/g,''),10)||0;
+    m.style.color='var(--danger)';
+    if(!code){ m.textContent='Enter the mass-send passcode.'; return; }
+    if(conf!=='SEND'){ m.textContent='Type SEND in the confirmation box to proceed.'; return; }
+    if(!window.confirm('Send "'+($('subj').value||'')+'" to '+n+' clients?\n\nThis cannot be undone.')) return;
+    bl.disabled=true; bl.textContent='Sending…'; m.style.color='var(--muted)'; m.textContent='Sending — please keep this tab open.';
+    try{
+      const html=await getNewsletterHtml();
+      const res=await callSend({mode:'live', confirm:'SEND', code:code, tier:S.sendTier||null, expected_count:n,
+                                subject:($('subj').value||'The Bottom Line'), html:html});
+      const b=res.body;
+      if(b && b.ok){ m.style.color='var(--good)'; m.textContent='✓ Sent to '+b.succeeded+' clients.'; $('code').value=''; $('confirm').value=''; await loadSends(); render(); }
+      else if(b && b.need_code){ m.style.color='var(--danger)'; m.textContent='That passcode was not accepted. Nothing was sent.'; }
+      else { m.style.color='var(--danger)'; m.textContent=(b && b.error)||'Send failed. Nothing was sent.'; }
+    }catch(e){ m.style.color='var(--danger)'; m.textContent=e.message||'Send failed.'; }
+    bl.disabled=false; bl.textContent='Send to '+n;
+  };
 }
 init();
 </script></body></html>
