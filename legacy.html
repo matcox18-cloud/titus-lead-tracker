@@ -79,6 +79,21 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);ba
 .sect{font-family:'Fraunces',Georgia,serif;color:var(--navy);font-size:15px;margin:22px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .acct{font-size:13px;padding:6px 0;border-bottom:1px solid #f2f4f7}
 .empty{text-align:center;color:var(--muted);padding:40px 20px}
+.modal{position:fixed;inset:0;background:rgba(19,43,73,.45);display:none;align-items:center;justify-content:center;z-index:120;padding:20px}
+.modal.show{display:flex}
+.modal-card{background:#fff;border-radius:14px;width:100%;max-width:640px;max-height:88vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.modal-head{padding:20px 22px;border-bottom:1px solid var(--line)}
+.modal-head h2{font-family:Fraunces,Georgia,serif;font-weight:600;color:var(--navy);margin:0 0 4px;font-size:19px}
+.modal-head p{margin:0;color:var(--muted);font-size:13.5px}
+.modal-body{padding:8px 22px 4px}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.wonrow{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #f2f4f7}
+.wonrow:last-child{border-bottom:none}
+.wonrow .who{flex:1;min-width:0}
+.wonrow .nm{font-weight:600;color:var(--navy);font-size:14px}
+.wonrow .sub{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.wonrow select{padding:7px 9px;font-size:13px}
+.wonrow input[type=checkbox]{width:17px;height:17px;accent-color:#132b49}
 @media(max-width:700px){.fieldgrid{grid-template-columns:1fr}.tabs button{padding:8px 9px;font-size:13px}}
 </style></head>
 <body>
@@ -91,6 +106,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);ba
 <div class="wrap" id="app"><div class="empty">Loading…</div></div>
 
 <div class="ov" id="ov"></div><div class="drawer" id="drawer"></div>
+<div class="modal" id="wonModal"><div class="modal-card">
+  <div class="modal-head"><h2>New clients won</h2><p id="wonSub"></p></div>
+  <div class="modal-body" id="wonBody"></div>
+  <div class="modal-foot">
+    <button class="btn" id="wonLater">Remind me later</button>
+    <button class="btn" id="wonNever">Not newsletter clients</button>
+    <button class="btn gold" id="wonAdd">Add selected</button>
+  </div>
+</div></div>
 
 <div id="login"><div class="login-card">
   <img id="loginMark" alt="Titus CPAs">
@@ -131,7 +155,7 @@ async function enter(){
   $('login').classList.remove('show');
   EMAIL=(SESSION&&SESSION.user?SESSION.user.email:'')||'';
   $('av').textContent=(EMAIL[0]||'?').toUpperCase();
-  await load(); await loadSends(); renderTabs(); render();
+  await load(); await loadSends(); renderTabs(); render(); checkWon();
 }
 $('loginBtn').onclick=async()=>{
   const em=$('loginEmail').value.trim(); const m=$('loginMsg');
@@ -166,6 +190,79 @@ const active=()=>CLIENTS.filter(c=>c.status==='active');
 const money=n=>'$'+Number(n||0).toLocaleString();
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const tierBadge=t=>t?'<span class="tb t'+t+'">Tier '+t+'</span>':'<span class="badge">—</span>';
+
+/* ---------- won -> client conversion ---------- */
+let WON=[];
+async function checkWon(){
+  try{
+    const {data:leads}=await sb.from('leads').select('id,payload');
+    if(!leads) return;
+    const won=leads.filter(l=>{
+      const p=l.payload||{};
+      if(!['won','onboarding'].includes(p.stage)) return false;
+      if(p.convertedAt||p.skipConversion) return false;
+      const em=(p.email||'').toLowerCase();
+      return em && em.includes('@');
+    });
+    if(!won.length) return;
+    const emails=won.map(l=>(l.payload.email||'').toLowerCase());
+    const {data:existing}=await sb.from('clients').select('email').in('email',emails);
+    const have=new Set((existing||[]).map(c=>c.email.toLowerCase()));
+    WON=won.filter(l=>!have.has((l.payload.email||'').toLowerCase()));
+    if(WON.length) showWon();
+  }catch(e){ console.error('checkWon',e); }
+}
+function showWon(){
+  $('wonSub').textContent=WON.length+' lead'+(WON.length===1?' has':'s have')+' been marked Won but '+(WON.length===1?'is':'are')+" not in your client list yet. Add "+(WON.length===1?'it':'them')+" so they start receiving client communication.";
+  $('wonBody').innerHTML=WON.map((l,i)=>{
+    const p=l.payload||{};
+    return '<div class="wonrow"><input type="checkbox" data-w="'+i+'" checked>'
+      +'<div class="who"><div class="nm">'+esc(p.name||'')+'</div>'
+      +'<div class="sub">'+esc([p.company&&p.company!=='—'?p.company:'',p.email].filter(Boolean).join(' · '))+'</div></div>'
+      +'<select data-wt="'+i+'"><option value="1">Tier 1</option><option value="2">Tier 2</option><option value="3" selected>Tier 3</option></select></div>';
+  }).join('');
+  $('wonModal').classList.add('show');
+}
+function closeWon(){ $('wonModal').classList.remove('show'); }
+async function markLeads(ids, patch){
+  for(const id of ids){
+    const l=WON.find(x=>x.id===id); if(!l) continue;
+    const p=Object.assign({},l.payload,patch);
+    await sb.from('leads').update({payload:p, updated_at:new Date().toISOString()}).eq('id',id);
+  }
+}
+async function addWon(){
+  const btn=$('wonAdd'); btn.disabled=true; btn.textContent='Adding…';
+  const picked=[...document.querySelectorAll('[data-w]')].filter(c=>c.checked).map(c=>Number(c.dataset.w));
+  const rows=[], ids=[];
+  picked.forEach(i=>{
+    const l=WON[i]; const p=l.payload||{};
+    const tier=Number((document.querySelector('[data-wt="'+i+'"]')||{}).value||3);
+    const first=(p.name||'').trim().split(/\s+/)[0]||'there';
+    rows.push({ email:(p.email||'').toLowerCase(), greeting:first, first_name:first,
+      last_name:(p.name||'').trim().split(/\s+/).slice(1).join(' '),
+      contact_name:p.name||'', company:(p.company&&p.company!=='—')?p.company:'',
+      tier:tier, status:'active', subscribed:true, source:'converted_from_lead',
+      account_count:0, household_size:1, is_entity:false,
+      notes:'Converted from Lead Tracker'+(p.origination?' · originated by '+p.origination:'')+'.',
+      updated_at:new Date().toISOString() });
+    ids.push(l.id);
+  });
+  if(rows.length){
+    const {error}=await sb.from('clients').upsert(rows,{onConflict:'email'});
+    if(error){ alert('Could not add: '+error.message); btn.disabled=false; btn.textContent='Add selected'; return; }
+    await markLeads(ids,{convertedAt:new Date().toISOString()});
+  }
+  closeWon(); await load(); render();
+  btn.disabled=false; btn.textContent='Add selected';
+}
+$('wonAdd').onclick=addWon;
+$('wonLater').onclick=closeWon;
+$('wonNever').onclick=async()=>{
+  const picked=[...document.querySelectorAll('[data-w]')].filter(c=>c.checked).map(c=>Number(c.dataset.w));
+  await markLeads(picked.map(i=>WON[i].id),{skipConversion:true});
+  closeWon();
+};
 
 /* ---------- nav ---------- */
 function renderTabs(){
