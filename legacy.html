@@ -8,20 +8,29 @@
 :root{--navy:#132b49;--navy2:#1d3d63;--gold:#d1af44;--gold-deep:#b8942f;--ink:#1f2733;--muted:#6b7686;--line:#e4e7ec;--bg:#f4f2ec;--good:#2f7d4f;--danger:#c0392b;--amber:#b8860b}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:'Hanken Grotesk',-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
 a{color:inherit}
-.top{position:sticky;top:0;z-index:40;background:var(--navy);color:#fff;display:flex;align-items:center;gap:18px;padding:0 20px;height:58px}
-.top img{height:22px}
-.secsw{display:inline-flex;background:rgba(255,255,255,.10);border-radius:20px;padding:3px;gap:2px}
-.secsw a{display:inline-flex;align-items:center;text-decoration:none;font-size:12.5px;font-weight:700;color:#c6d2e2;padding:5px 14px;border-radius:20px;white-space:nowrap}
+body{display:flex;min-height:100vh}
+.sidebar{width:248px;background:var(--navy);color:#cdd8e6;flex-shrink:0;position:fixed;top:0;bottom:0;left:0;display:flex;flex-direction:column;z-index:40}
+.brand{padding:22px 20px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand img{height:30px;width:auto;max-width:170px;display:block}
+.secsw{display:flex;background:rgba(255,255,255,.10);border-radius:20px;padding:3px;gap:2px;margin:14px 16px 4px}
+.secsw a{flex:1;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:12.5px;font-weight:700;color:#c6d2e2;padding:6px 10px;border-radius:20px;white-space:nowrap}
 .secsw a:hover{color:#fff;background:rgba(255,255,255,.08)}
 .secsw a.on{background:var(--gold);color:var(--navy)}
-.hublabel{font-size:10px;letter-spacing:1.4px;border:1px solid rgba(209,175,68,.5);color:var(--gold);border-radius:20px;padding:2px 9px}
-.tabs{display:flex;gap:4px;margin-left:14px}
-.tabs button{background:none;border:none;color:#c6d2e2;font:inherit;font-weight:600;font-size:14px;padding:8px 13px;border-radius:8px;cursor:pointer}
-.tabs button:hover{background:rgba(255,255,255,.08);color:#fff}
-.tabs button.on{background:var(--gold);color:var(--navy)}
-.top .right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12.5px;color:#c6d2e2}
-.av{width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;cursor:pointer}
-.wrap{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
+.nav{padding:14px 12px;flex:1}
+.nav-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#6f86a3;padding:10px 12px 6px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 12px;border-radius:10px;color:#bcc9da;font-weight:500;font-size:14px;margin-bottom:2px;transition:.15s;background:none;border:none;cursor:pointer;font-family:inherit}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.active{background:var(--gold);color:var(--navy);font-weight:600}
+.nav-foot{padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#6f86a3}
+.nav-foot .tagline{font-style:italic;color:#9fb1c7;margin-bottom:6px;line-height:1.5}
+.main{flex:1;margin-left:248px;display:flex;flex-direction:column;min-width:0}
+.topbar{background:#fff;border-bottom:1px solid var(--line);padding:14px 26px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:30}
+.topbar h1{font-family:'Fraunces',Georgia,serif;font-size:20px;font-weight:600;color:var(--navy);white-space:nowrap;margin:0}
+.topbar .sub{color:var(--muted);font-size:12.5px;margin-top:1px}
+.topbar .spacer{flex:1}
+.av{width:34px;height:34px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0}
+@media(max-width:900px){.sidebar{display:none}.main{margin-left:0}}
+.content{padding:24px 26px 60px;flex:1;max-width:1180px}
 h1.page{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:25px;margin:0 0 3px;color:var(--navy)}
 .psub{color:var(--muted);font-size:13.5px;margin:0 0 18px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
@@ -101,13 +110,24 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);ba
 @media(max-width:700px){.fieldgrid{grid-template-columns:1fr}.tabs button{padding:8px 9px;font-size:13px}}
 </style></head>
 <body>
-<div class="top">
-  <img id="brand" alt="Titus CPAs">
-  <span class="secsw"><a href="index.html">Groundwork</a><a href="legacy.html" class="on">Legacy Builder</a></span>
-  <div class="tabs" id="tabs"></div>
-  <div class="right"><span id="cnt"></span><div class="av" id="av" title="Sign out"></div></div>
-</div>
-<div class="wrap" id="app"><div class="empty">Loading…</div></div>
+<aside class="sidebar">
+  <div class="brand"><img id="brand" alt="Titus CPAs"></div>
+  <div class="secsw"><a href="index.html">Groundwork</a><a href="legacy.html" class="on">Legacy Builder</a></div>
+  <nav class="nav" id="nav"></nav>
+  <div class="nav-foot">
+    <div class="tagline">"We bring the structure.<br>You build the legacy."</div>
+    <div id="cnt"></div>
+    Titus CPAs &middot; Birmingham, AL
+  </div>
+</aside>
+<div class="main">
+  <header class="topbar">
+    <div><h1 id="pageTitle">Client Dashboard</h1><div class="sub" id="pageSub">Your book of business</div></div>
+    <div class="spacer"></div>
+    <div class="av" id="av" title="Sign out"></div>
+  </header>
+  <main class="content" id="app"><div class="empty">Loading…</div></main>
+</div></div>
 
 <div class="ov" id="ov"></div><div class="drawer" id="drawer"></div>
 <div class="modal" id="wonModal"><div class="modal-card">
@@ -269,9 +289,12 @@ $('wonNever').onclick=async()=>{
 };
 
 /* ---------- nav ---------- */
+const META={dashboard:['Client Dashboard','Your book of business'],clients:['Clients','Every client relationship'],email:['Email & Marketing','Send The Bottom Line']};
 function renderTabs(){
-  $('tabs').innerHTML=TABS.map(([id,l])=>'<button data-v="'+id+'" class="'+(S.view===id?'on':'')+'">'+l+'</button>').join('');
-  $('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.view=b.dataset.v;renderTabs();render();});
+  $('nav').innerHTML='<div class="nav-label">Clients</div>'+TABS.map(([id,l])=>
+    '<button class="nav-item '+(S.view===id?'active':'')+'" data-v="'+id+'">'+l+'</button>').join('');
+  $('nav').querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>{S.view=b.dataset.v;renderTabs();render();window.scrollTo(0,0);});
+  const m=META[S.view]||['','']; $('pageTitle').textContent=m[0]; $('pageSub').textContent=m[1];
 }
 
 /* ---------- views ---------- */
@@ -290,7 +313,7 @@ function viewDash(){
   const deep=a.filter(c=>c.account_count>=5).sort((x,y)=>y.account_count-x.account_count).slice(0,8);
   const deepRows=deep.map(c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'</b>'+(c.relationship_group?' <span class="badge">'+esc(c.relationship_group)+'</span>':'')+'</td><td>'+tierBadge(c.tier)+'</td><td style="text-align:right">'+c.account_count+' accounts</td></tr>').join('');
   const review=CLIENTS.filter(c=>c.status==='review').length;
-  return '<h1 class="page">Client Dashboard</h1><p class="psub">Your book of business — '+a.length+' active clients.</p>'
+  return '<p class="psub">'+a.length+' active clients.</p>'
    +'<div class="kpis">'
    +kpi(a.length,'Active clients')+kpi(a.filter(c=>c.tier===1).length,'Tier 1')
    +kpi(multi,'Multi-entity clients')+kpi(CLIENTS.filter(c=>c.household_size>1).length,'Shared households')
@@ -317,7 +340,7 @@ function viewClients(){
     }).join('');
   } else body=list.map(rowHtml).join('');
   if(!body) body='<tr><td colspan="5"><div class="empty">No clients match.</div></td></tr>';
-  return '<h1 class="page">Clients</h1><p class="psub">'+list.length+' shown · click any row to open the record.</p>'
+  return '<p class="psub">'+list.length+' shown · click any row to open the record.</p>'
    +'<div class="panel"><div class="toolbar"><input type="search" id="q" class="grow" placeholder="Search name, company, entity, city…" value="'+esc(S.q)+'">'
    +pills
    +'<span class="pill '+(S.group==='family'?'on':'')+'" data-g="'+(S.group==='family'?'flat':'family')+'">'+(S.group==='family'?'Grouped':'Group by relationship')+'</span></div>'
@@ -337,7 +360,7 @@ function viewEmail(){
   const hist=(S.sends||[]).map(s=>'<tr><td>'+esc(s.subject||'')+'</td><td>'+esc(s.audience||'')+'</td><td>'+(s.recipients||0)+'</td><td>'+(s.failed?('<span style="color:var(--danger)">'+s.failed+' failed</span>'):'ok')+'</td><td class="hint">'+new Date(s.created_at).toLocaleString()+'</td></tr>').join('')
     || '<tr><td colspan="5"><div class="empty">No newsletters sent yet.</div></td></tr>';
 
-  return '<h1 class="page">Email &amp; Marketing</h1><p class="psub">Send The Bottom Line to your client list. Test on yourself first — always.</p>'
+  return '<p class="psub">Send The Bottom Line to your client list. Test on yourself first — always.</p>'
   +'<div class="kpis">'+kpi(uniq,'Will receive')+kpi(a.filter(c=>c.tier===1).length,'Tier 1')+kpi(a.filter(c=>c.tier===2).length,'Tier 2')+kpi(a.filter(c=>c.tier===3).length,'Tier 3')+kpi(unsub,'Unsubscribed')+'</div>'
 
   +'<div class="panel"><div class="ph"><h3>1 &middot; Who receives it</h3><span class="hint">de-duplicated by email</span></div>'
