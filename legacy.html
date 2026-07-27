@@ -184,9 +184,9 @@ const LOGO='data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVV
 document.getElementById('brand').src=LOGO; document.getElementById('loginMark').src=LOGO;
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
 const $=i=>document.getElementById(i);
-let CLIENTS=[], SESSION=null, EMAIL='';
+let CLIENTS=[], CONN=[], REFS={}, SESSION=null, EMAIL='';
 let S={view:'dashboard', q:'', tier:'', group:'flat'};
-const TABS=[['dashboard','Dashboard'],['clients','Clients'],['email','Email & Marketing']];
+const TABS=[['dashboard','Dashboard'],['clients','Clients'],['connectors','Connectors'],['email','Email & Marketing']];
 
 /* ---------- auth ---------- */
 async function init(){
@@ -199,7 +199,7 @@ async function enter(){
   $('login').classList.remove('show');
   EMAIL=(SESSION&&SESSION.user?SESSION.user.email:'')||'';
   $('av').textContent=(EMAIL[0]||'?').toUpperCase();
-  await load(); await loadSends(); renderTabs(); render(); checkWon();
+  await load(); await loadSends(); await loadConnectors(); renderTabs(); render(); checkWon();
 }
 $('loginBtn').onclick=async()=>{
   const em=$('loginEmail').value.trim(); const m=$('loginMsg');
@@ -309,7 +309,7 @@ $('wonNever').onclick=async()=>{
 };
 
 /* ---------- nav ---------- */
-const META={dashboard:['Client Dashboard','Your book of business'],clients:['Clients','Every client relationship'],email:['Email & Marketing','Send The Bottom Line']};
+const META={dashboard:['Client Dashboard','Your book of business'],clients:['Clients','Every client relationship'],connectors:['Connectors','People who send us business'],email:['Email & Marketing','Send The Bottom Line']};
 function renderTabs(){
   $('nav').innerHTML='<div class="nav-label">Clients</div>'+TABS.map(([id,l])=>
     '<button class="nav-item '+(S.view===id?'active':'')+'" data-v="'+id+'">'+l+'</button>').join('');
@@ -319,7 +319,7 @@ function renderTabs(){
 
 /* ---------- views ---------- */
 function render(){
-  $('app').innerHTML = S.view==='dashboard'?viewDash() : S.view==='clients'?viewClients() : viewEmail();
+  $('app').innerHTML = S.view==='dashboard'?viewDash() : S.view==='clients'?viewClients() : S.view==='connectors'?viewConnectors() : viewEmail();
   bind();
 }
 function viewDash(){
@@ -419,6 +419,98 @@ function viewEmail(){
 
   +'<div class="panel"><div class="ph"><h3>Send history</h3></div>'
   +'<table><thead><tr><th>Subject</th><th>Audience</th><th>Recipients</th><th>Result</th><th>When</th></tr></thead><tbody>'+hist+'</tbody></table></div>';
+}
+
+async function loadConnectors(){
+  try{
+    const {data}=await sb.from('connectors').select('*').order('name');
+    CONN=data||[];
+    const {data:lds}=await sb.from('leads').select('payload');
+    REFS={};
+    (lds||[]).forEach(l=>{ const r=((l.payload||{}).referredBy||'').trim().toLowerCase();
+      if(r && r!=='—'){ (REFS[r]=REFS[r]||[]).push(l.payload); } });
+  }catch(e){ CONN=[]; REFS={}; }
+}
+function refsFor(c){ return REFS[(c.name||'').trim().toLowerCase()]||[]; }
+
+function viewConnectors(){
+  const rows=CONN.filter(c=>{
+    if(!S.cq) return true; const q=S.cq.toLowerCase();
+    return [c.name,c.firm,c.role,c.kind,c.city].some(v=>(v||'').toLowerCase().includes(q));
+  });
+  const body=rows.map(c=>{
+    const r=refsFor(c); const won=r.filter(x=>['won','onboarding'].includes(x.stage)).length;
+    return '<tr data-cid="'+c.id+'"><td><b>'+esc(c.name)+'</b>'+(c.firm?'<div class="hint">'+esc(c.firm)+'</div>':'')+'</td>'
+      +'<td><span class="badge">'+esc(c.kind||'—')+'</span></td>'
+      +'<td>'+esc(c.role||'—')+'</td>'
+      +'<td style="text-align:center"><b>'+r.length+'</b></td>'
+      +'<td style="text-align:center">'+(won?'<b style="color:var(--good)">'+won+'</b>':'—')+'</td>'
+      +'<td>'+esc(c.owner||'—')+'</td>'
+      +'<td class="hint">'+esc(c.email||'')+'</td>'
+      +'<td style="text-align:right"><button class="rowedit" data-ce="'+c.id+'" onclick="event.stopPropagation()">Edit</button></td></tr>';
+  }).join('') || '<tr><td colspan="8"><div class="empty">No connectors yet.</div></td></tr>';
+  const totalRefs=CONN.reduce((a,c)=>a+refsFor(c).length,0);
+  return '<p class="psub">'+CONN.length+' connectors · '+totalRefs+' referrals tracked. These are people who send us business — not clients, and never included in client mailings.</p>'
+   +'<div class="panel"><div class="toolbar">'
+   +'<input type="search" id="cq" class="grow" placeholder="Search connectors…" value="'+esc(S.cq||'')+'">'
+   +'<button class="btn gold" id="addConn">+ Add connector</button></div>'
+   +'<table><thead><tr><th>Connector</th><th>Type</th><th>Role</th><th style="text-align:center">Referrals</th><th style="text-align:center">Won</th><th>Owner</th><th>Email</th><th></th></tr></thead>'
+   +'<tbody>'+body+'</tbody></table></div>';
+}
+function connForm(c){
+  c=c||{};
+  const t=(id,lab,val,ph)=>'<div><label>'+lab+'</label><input id="c_'+id+'" value="'+esc(val||'')+'" placeholder="'+(ph||'')+'"></div>';
+  const kinds=['Financial Advisor','Attorney','Banker','Insurance','Client','Referral Partner','Friends & Family','Other'];
+  return '<div class="editgrid">'
+   +t('name','Name *',c.name)+t('firm','Firm',c.firm)
+   +'<div><label>Type</label><select id="c_kind">'+kinds.map(k=>'<option'+(c.kind===k?' selected':'')+'>'+k+'</option>').join('')+'</select></div>'
+   +t('role','Role',c.role,'e.g. Managing partner')
+   +t('email','Email',c.email)+t('phone','Phone',c.phone)
+   +t('city','City',c.city)+t('state','State',c.state)
+   +t('owner','Relationship owner',c.owner,'Who at Titus owns this')
+   +t('last_touch','Last touch',c.last_touch,'YYYY-MM-DD')
+   +'<div class="full"><label>Notes</label><textarea id="c_notes" rows="3">'+esc(c.notes||'')+'</textarea></div>'
+   +'</div><div style="display:flex;justify-content:space-between;margin-top:14px">'
+   +(c.id?'<button class="btn" id="connDel" style="color:var(--danger);border-color:#f0d3d0">Remove</button>':'<span></span>')
+   +'<button class="btn gold" id="connSave">Save connector</button></div>';
+}
+function openConn(id){
+  const c=CONN.find(x=>x.id===Number(id))||{};
+  const r=refsFor(c);
+  S.conn=c;
+  $('drawer').innerHTML='<div class="dr-head"><div class="nm">'+esc(c.name||'New connector')+'</div>'
+   +'<div class="co">'+esc([c.firm,c.role].filter(Boolean).join(' · '))+'</div>'
+   +'<div style="margin-top:10px;display:flex;gap:8px;align-items:center"><span class="badge">'+esc(c.kind||'—')+'</span>'
+   +'<span style="margin-left:auto"><button class="btn" id="connClose" style="padding:5px 12px;font-size:12.5px">Close</button></span></div></div>'
+   +'<div class="dr-body">'+connForm(c)
+   +(r.length?'<div class="sect">Referrals ('+r.length+')</div>'+r.map(x=>
+      '<div class="acct"><b>'+esc(x.name||'')+'</b>'+(x.company&&x.company!=='—'?' · '+esc(x.company):'')
+      +' <span class="badge">'+esc(x.stage||'')+'</span></div>').join('')
+     :'<div class="sect">Referrals</div><div class="hint">No referrals recorded yet. When a lead is added with this person under “Referred By”, it will appear here.</div>')
+   +'</div>';
+  $('connClose').onclick=closeRec;
+  $('connSave').onclick=saveConn;
+  const d=$('connDel'); if(d) d.onclick=delConn;
+  $('drawer').classList.add('show'); $('ov').classList.add('show');
+}
+async function saveConn(){
+  const g=id=>{const el=$('c_'+id); return el?el.value.trim():null;};
+  const name=g('name'); if(!name){ alert('Name is required.'); return; }
+  const rec={name:name,firm:g('firm'),role:g('role'),kind:$('c_kind').value,email:g('email'),phone:g('phone'),
+    city:g('city'),state:g('state'),owner:g('owner'),notes:g('notes'),
+    last_touch:g('last_touch')||null, updated_at:new Date().toISOString()};
+  const btn=$('connSave'); btn.disabled=true; btn.textContent='Saving…';
+  let error;
+  if(S.conn && S.conn.id){ ({error}=await sb.from('connectors').update(rec).eq('id',S.conn.id)); }
+  else { ({error}=await sb.from('connectors').insert(rec)); }
+  if(error){ alert('Could not save: '+error.message); btn.disabled=false; btn.textContent='Save connector'; return; }
+  closeRec(); await loadConnectors(); render();
+}
+async function delConn(){
+  if(!S.conn||!S.conn.id) return;
+  if(!confirm('Remove '+S.conn.name+' from connectors?')) return;
+  await sb.from('connectors').delete().eq('id',S.conn.id);
+  closeRec(); await loadConnectors(); render();
 }
 
 async function loadSends(){
@@ -610,6 +702,10 @@ function bind(){
     sel.disabled=false; render();
   });
   document.querySelectorAll('[data-qe]').forEach(b=>b.onclick=async()=>{ await openRec(b.dataset.qe); S.editing=true; drawRec(); });
+  const cq=$('cq'); if(cq) cq.oninput=()=>{S.cq=cq.value; const p=document.activeElement===cq; render(); if(p){const n=$('cq'); n.focus(); n.setSelectionRange(n.value.length,n.value.length);} };
+  const ac=$('addConn'); if(ac) ac.onclick=()=>{ S.conn={}; openConn(null); };
+  document.querySelectorAll('tr[data-cid]').forEach(tr=>tr.onclick=()=>openConn(tr.dataset.cid));
+  document.querySelectorAll('[data-ce]').forEach(b=>b.onclick=()=>openConn(b.dataset.ce));
   document.querySelectorAll('[data-st]').forEach(el=>el.onclick=()=>{S.sendTier=el.dataset.st;render();});
   const sj=$('subj'); if(sj) sj.oninput=()=>{S.subject=sj.value;};
   const bt=$('btnTest');
