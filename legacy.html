@@ -29,6 +29,26 @@ body{display:flex;min-height:100vh}
 .topbar .sub{color:var(--muted);font-size:12.5px;margin-top:1px}
 .topbar .spacer{flex:1}
 .av{width:34px;height:34px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0}
+.drawer{width:min(680px,100%)}
+.dr-body .f .v{word-break:break-word}
+.sumbox{background:#faf7ef;border:1px solid #ecdfb4;border-radius:11px;padding:14px 16px;margin-bottom:6px}
+.sumbox .lbl{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--gold-deep);font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.sumbox p{margin:0 0 8px;font-size:13.5px;line-height:1.65;color:#3f4751}
+.sumbox p:last-child{margin-bottom:0}
+.sumempty{color:var(--muted);font-size:13px;font-style:italic}
+.noteitem{border-bottom:1px solid #f2f4f7;padding:10px 0}
+.noteitem:last-child{border-bottom:none}
+.noteitem .meta{font-size:11px;color:var(--muted);margin-top:4px}
+.noteitem .txt{font-size:13.5px;white-space:pre-wrap;line-height:1.55}
+.editgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.editgrid .full{grid-column:1/-1}
+.editgrid label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;margin-bottom:4px}
+.editgrid input,.editgrid select,.editgrid textarea{width:100%;font-size:13.5px}
+.qtier{padding:4px 6px;font-size:12.5px;border:1px solid transparent;background:transparent;cursor:pointer;border-radius:6px}
+.qtier:hover{border-color:var(--line);background:#fff}
+.rowedit{background:none;border:none;color:var(--gold-deep);cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:2px 6px;border-radius:6px}
+.rowedit:hover{background:#f4efdd}
+@media(max-width:700px){.editgrid{grid-template-columns:1fr}}
 @media(max-width:900px){.sidebar{display:none}.main{margin-left:0}}
 .content{padding:24px 26px 60px;flex:1;max-width:1180px}
 h1.page{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:25px;margin:0 0 3px;color:var(--navy)}
@@ -339,17 +359,22 @@ function viewClients(){
         +m.map(rowHtml).join('');
     }).join('');
   } else body=list.map(rowHtml).join('');
-  if(!body) body='<tr><td colspan="5"><div class="empty">No clients match.</div></td></tr>';
+  if(!body) body='<tr><td colspan="6"><div class="empty">No clients match.</div></td></tr>';
   return '<p class="psub">'+list.length+' shown · click any row to open the record.</p>'
    +'<div class="panel"><div class="toolbar"><input type="search" id="q" class="grow" placeholder="Search name, company, entity, city…" value="'+esc(S.q)+'">'
    +pills
    +'<span class="pill '+(S.group==='family'?'on':'')+'" data-g="'+(S.group==='family'?'flat':'family')+'">'+(S.group==='family'?'Grouped':'Group by relationship')+'</span></div>'
-   +'<table><thead><tr><th>Client</th><th>Tier</th><th>Entities</th><th>City</th><th>Email</th></tr></thead><tbody>'+body+'</tbody></table></div>';
+   +'<table><thead><tr><th>Client</th><th>Tier</th><th>Entities</th><th>City</th><th>Email</th><th></th></tr></thead><tbody>'+body+'</tbody></table></div>';
 }
 const rowHtml=c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'</b>'
   +(c.household_size>1?' <span class="badge">+'+(c.household_size-1)+'</span>':'')
-  +(c.is_principal?' <span class="tb t1">Principal</span>':'')+'</td>'
-  +'<td>'+tierBadge(c.tier)+'</td><td>'+(c.account_count||0)+'</td><td>'+esc(c.city||'')+'</td><td class="hint">'+esc(c.email)+'</td></tr>';
+  +(c.is_principal?' <span class="tb t1">Principal</span>':'')
+  +(c.company?'<div class="hint">'+esc(c.company)+'</div>':'')+'</td>'
+  +'<td><select class="qtier" data-qt="'+esc(c.email)+'" onclick="event.stopPropagation()">'
+  +[1,2,3].map(n=>'<option value="'+n+'"'+(c.tier===n?' selected':'')+'>Tier '+n+'</option>').join('')+'</select></td>'
+  +'<td>'+(c.account_count||0)+'</td><td>'+esc(c.city||'')+'</td>'
+  +'<td class="hint">'+esc(c.email)+'</td>'
+  +'<td style="text-align:right"><button class="rowedit" data-qe="'+esc(c.email)+'" onclick="event.stopPropagation()">Edit</button></td></tr>';
 
 function viewEmail(){
   const a=active().filter(c=>c.subscribed!==false);
@@ -415,23 +440,157 @@ async function callSend(payload){
 
 
 /* ---------- drawer ---------- */
-function openRec(em){
-  const c=CLIENTS.find(x=>x.email===em); if(!c)return;
-  const accts=(c.accounts||'').split('|').map(s=>s.trim()).filter(Boolean);
-  $('drawer').innerHTML='<div class="dr-head"><div class="nm">'+esc(c.contact_name)+'</div><div class="co">'+esc(c.company||c.relationship_group||'')+'</div>'
-   +'<div style="margin-top:10px">'+tierBadge(c.tier)+' <span class="badge">'+esc(c.status)+'</span>'+(c.is_principal?' <span class="tb t1">Principal</span>':'')+'</div></div>'
-   +'<div class="dr-body"><div class="fieldgrid">'
-   +f('Greeting','Hi '+esc(c.greeting))+f('Email','<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>')
-   +f('City',esc([c.city,c.state].filter(Boolean).join(', ')||'—'))+f('Entities',(c.account_count||0)+'')
-   +f('Relationship',esc(c.relationship_group||'—'))+f('Tags',esc(c.tags||'—'))
-   +'</div>'
-   +(c.household_size>1?'<div class="sect">Household</div><div class="hint">'+esc(c.household_names)+'</div>':'')
-   +(c.notes?'<div class="sect">Notes</div><div style="font-size:13.5px">'+esc(c.notes)+'</div>':'')
-   +(accts.length?'<div class="sect">Entities &amp; returns ('+accts.length+')</div>'+accts.map(a=>'<div class="acct">'+esc(a)+'</div>').join(''):'')
-   +(c.departed_accounts?'<div class="sect">Closed / departed accounts</div><div class="hint">'+esc(c.departed_accounts)+'</div>':'')
-   +'<div style="margin-top:22px"><button class="btn" id="close">Close</button></div></div>';
+async function openRec(em){
+  const c=CLIENTS.find(x=>x.email===em); if(!c) return;
+  S.rec=c; S.editing=false;
+  await loadNotes(em);
+  drawRec();
   $('drawer').classList.add('show'); $('ov').classList.add('show');
-  $('close').onclick=closeRec;
+}
+async function loadNotes(em){
+  try{ const {data}=await sb.from('client_notes').select('*').eq('client_email',em).order('created_at',{ascending:false}); S.notes=data||[]; }
+  catch(e){ S.notes=[]; }
+}
+function summaryHtml(c){
+  if(!c.summary) return '<div class="sumempty">No summary yet. Add notes and client details, then press Build summary.</div>';
+  return c.summary.split(/\n{2,}/).filter(Boolean).map(p=>'<p>'+esc(p)+'</p>').join('');
+}
+function drawRec(){
+  const c=S.rec; if(!c) return;
+  const accts=(c.accounts||'').split('|').map(s=>s.trim()).filter(Boolean);
+  const notes=(S.notes||[]);
+  const body = S.editing ? editForm(c) : viewForm(c,accts);
+  $('drawer').innerHTML=
+   '<div class="dr-head"><div class="nm">'+esc(c.contact_name||'')+'</div>'
+   +'<div class="co">'+esc(c.company||c.relationship_group||'')+'</div>'
+   +'<div style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+tierBadge(c.tier)
+   +' <span class="badge">'+esc(c.status||'')+'</span>'+(c.is_principal?' <span class="tb t1">Principal</span>':'')
+   +'<span style="margin-left:auto;display:flex;gap:8px">'
+   +'<button class="btn" id="recEdit" style="padding:5px 12px;font-size:12.5px">'+(S.editing?'Cancel':'✎ Edit')+'</button>'
+   +'<button class="btn" id="recClose" style="padding:5px 12px;font-size:12.5px">Close</button></span></div></div>'
+   +'<div class="dr-body">'+body
+   +'<div class="sect">Notes &amp; institutional knowledge</div>'
+   +'<textarea id="newNote" rows="3" placeholder="Add a note from a meeting, a call, something the team should know…" style="width:100%;box-sizing:border-box"></textarea>'
+   +'<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn navy" id="addNote">Add note</button></div>'
+   +'<div style="margin-top:12px">'+(notes.length?notes.map(n=>
+       '<div class="noteitem"><div class="txt">'+esc(n.note)+'</div><div class="meta">'+esc(n.author||'')+' · '+new Date(n.created_at).toLocaleString()+'</div></div>').join('')
+       :'<div class="hint">No notes yet.</div>')+'</div>'
+   +'</div>';
+  $('recClose').onclick=closeRec;
+  $('recEdit').onclick=()=>{ S.editing=!S.editing; drawRec(); };
+  const an=$('addNote'); if(an) an.onclick=addNote;
+  const bs=$('buildSum'); if(bs) bs.onclick=buildSummary;
+  const sv=$('recSave'); if(sv) sv.onclick=saveRec;
+}
+function viewForm(c,accts){
+  const money=v=>v?('$'+Number(v).toLocaleString()):'—';
+  return '<div class="sumbox"><div class="lbl"><span>Client summary</span>'
+    +'<button class="rowedit" id="buildSum">Build summary</button></div>'+summaryHtml(c)
+    +(c.summary_updated_at?'<div class="hint" style="margin-top:8px">Updated '+new Date(c.summary_updated_at).toLocaleDateString()+' · drafted from firm records, review before client use.</div>':'')
+    +'</div>'
+   +'<div class="sect">Details</div><div class="fieldgrid">'
+   +f('Greeting','Hi '+esc(c.greeting||'there'))
+   +f('Email','<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>')
+   +f('Phone',esc(c.phone||'—'))
+   +f('Location',esc([c.city,c.state].filter(Boolean).join(', ')||'—'))
+   +f('Industry',esc(c.industry||'—'))
+   +f('Annual fees',money(c.annual_fees))
+   +f('Revenue',esc(c.revenue||'—'))
+   +f('Client since',esc(c.client_since||'—'))
+   +f('Referral source',esc(c.referral_source||'—'))
+   +f('Relationship owner',esc(c.owner||'—'))
+   +f('Birthday',esc(c.birthday||'—'))
+   +f('Relationship group',esc(c.relationship_group||'—'))
+   +'</div>'
+   +(c.key_people?'<div class="sect">Key people</div><div style="font-size:13.5px;white-space:pre-wrap">'+esc(c.key_people)+'</div>':'')
+   +(c.household_size>1?'<div class="sect">Household</div><div class="hint">'+esc(c.household_names)+'</div>':'')
+   +(c.services?'<div class="sect">Services</div><div style="font-size:13.5px;white-space:pre-wrap">'+esc(c.services)+'</div>':'')
+   +(accts.length?'<div class="sect">Entities &amp; returns ('+accts.length+')</div>'+accts.map(a=>'<div class="acct">'+esc(a)+'</div>').join(''):'')
+   +(c.milestones?'<div class="sect">Milestones</div><div style="font-size:13.5px;white-space:pre-wrap">'+esc(c.milestones)+'</div>':'')
+   +(c.departed_accounts?'<div class="sect">Closed accounts</div><div class="hint">'+esc(c.departed_accounts)+'</div>':'');
+}
+function editForm(c){
+  const t=(id,lab,val,ph)=>'<div><label>'+lab+'</label><input id="e_'+id+'" value="'+esc(val||'')+'" placeholder="'+(ph||'')+'"></div>';
+  const ta=(id,lab,val,ph)=>'<div class="full"><label>'+lab+'</label><textarea id="e_'+id+'" rows="3" placeholder="'+(ph||'')+'">'+esc(val||'')+'</textarea></div>';
+  return '<div class="editgrid">'
+   +t('contact_name','Client name',c.contact_name)
+   +t('company','Company',c.company)
+   +t('greeting','Greeting (after "Hi")',c.greeting)
+   +t('phone','Phone',c.phone,'(205) 555-0000')
+   +t('city','City',c.city)+t('state','State',c.state)
+   +t('industry','Industry',c.industry)
+   +t('annual_fees','Annual fees',c.annual_fees,'25000')
+   +t('revenue','Revenue',c.revenue,'~$6M')
+   +t('client_since','Client since',c.client_since,'2019')
+   +t('referral_source','Referral source',c.referral_source)
+   +t('owner','Relationship owner',c.owner)
+   +t('birthday','Birthday',c.birthday,'Mar 14')
+   +t('relationship_group','Relationship group',c.relationship_group)
+   +'<div><label>Tier</label><select id="e_tier">'+[1,2,3].map(n=>'<option value="'+n+'"'+(c.tier===n?' selected':'')+'>Tier '+n+'</option>').join('')+'</select></div>'
+   +'<div><label>Status</label><select id="e_status">'+['active','review','departed','internal'].map(s=>'<option'+(c.status===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>'
+   +ta('key_people','Key people','','Spouse, partners, children — one per line')
+   +ta('services','Services',c.services,'Monthly CAS, 1120-S, personal 1040…')
+   +ta('milestones','Milestones',c.milestones,'Succession review 2027, daughter starts college…')
+   +ta('summary','Client summary',c.summary,'The story of this relationship')
+   +'</div><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">'
+   +'<button class="btn gold" id="recSave">Save changes</button></div>';
+}
+async function saveRec(){
+  const c=S.rec; const g=id=>{const el=$('e_'+id); return el?el.value.trim():undefined;};
+  const patch={contact_name:g('contact_name'),company:g('company'),greeting:g('greeting'),phone:g('phone'),
+    city:g('city'),state:g('state'),industry:g('industry'),revenue:g('revenue'),client_since:g('client_since'),
+    referral_source:g('referral_source'),owner:g('owner'),birthday:g('birthday'),
+    relationship_group:g('relationship_group'),key_people:g('key_people'),services:g('services'),
+    milestones:g('milestones'),summary:g('summary'),
+    tier:Number($('e_tier').value)||null,status:$('e_status').value,
+    annual_fees:(g('annual_fees')||'').replace(/[^0-9.]/g,'')||null,
+    updated_at:new Date().toISOString()};
+  const btn=$('recSave'); btn.disabled=true; btn.textContent='Saving…';
+  const {error}=await sb.from('clients').update(patch).eq('email',c.email);
+  if(error){ alert('Could not save: '+error.message); btn.disabled=false; btn.textContent='Save changes'; return; }
+  Object.assign(c,patch); S.editing=false;
+  await load(); S.rec=CLIENTS.find(x=>x.email===c.email)||c;
+  drawRec(); render();
+}
+async function addNote(){
+  const el=$('newNote'); const txt=(el.value||'').trim(); if(!txt) return;
+  const btn=$('addNote'); btn.disabled=true; btn.textContent='Saving…';
+  const {error}=await sb.from('client_notes').insert({client_email:S.rec.email,note:txt,author:EMAIL});
+  if(error){ alert('Could not add note: '+error.message); }
+  await loadNotes(S.rec.email); drawRec();
+}
+function buildSummary(){
+  const c=S.rec, n=S.notes||[];
+  const accts=(c.accounts||'').split('|').map(s=>s.trim()).filter(Boolean);
+  const P=[];
+  const who=c.contact_name||c.greeting||'This client';
+  let p1=who;
+  if(c.company) p1+=' of '+c.company;
+  if(c.industry) p1+=' ('+c.industry+')';
+  p1+=' is a Tier '+(c.tier||'—')+' relationship';
+  if(c.client_since) p1+=', a client since '+c.client_since;
+  if(c.city) p1+=', based in '+[c.city,c.state].filter(Boolean).join(', ');
+  p1+='.';
+  if(c.annual_fees) p1+=' Annual fees are about $'+Number(c.annual_fees).toLocaleString()+'.';
+  if(c.referral_source) p1+=' They came to us through '+c.referral_source+'.';
+  P.push(p1);
+  if(accts.length){
+    let p2='We handle '+accts.length+' account'+(accts.length===1?'':'s')+' for this relationship';
+    p2+= accts.length>1 ? ': '+accts.slice(0,6).join('; ')+(accts.length>6?('; and '+(accts.length-6)+' more'):'')+'.' : ': '+accts[0]+'.';
+    if(c.relationship_group) p2+=' These sit under the '+c.relationship_group+' relationship.';
+    P.push(p2);
+  }
+  if(c.household_size>1) P.push('This address is shared by '+c.household_names+', so they receive one combined communication rather than duplicates.');
+  if(c.key_people) P.push('Key people: '+c.key_people.replace(/\n/g,'; ')+'.');
+  if(c.services) P.push('Services: '+c.services.replace(/\n/g,'; ')+'.');
+  if(c.milestones) P.push('Looking ahead: '+c.milestones.replace(/\n/g,'; ')+'.');
+  if(n.length){
+    P.push('From the team’s notes: '+n.slice(0,3).map(x=>x.note.replace(/\s+/g,' ').slice(0,220)).join(' · '));
+  }
+  const draft=P.join('\n\n');
+  const el=$('e_summary');
+  if(el){ el.value=draft; }
+  else { S.rec.summary=draft; sb.from('clients').update({summary:draft,summary_updated_at:new Date().toISOString()}).eq('email',c.email).then(()=>{ S.rec.summary_updated_at=new Date().toISOString(); drawRec(); }); }
 }
 const f=(l,v)=>'<div class="f"><div class="l">'+l+'</div><div class="v">'+v+'</div></div>';
 function closeRec(){ $('drawer').classList.remove('show'); $('ov').classList.remove('show'); }
@@ -442,6 +601,15 @@ function bind(){
   document.querySelectorAll('[data-t]').forEach(el=>el.onclick=()=>{S.tier=el.dataset.t;render();});
   document.querySelectorAll('[data-g]').forEach(el=>el.onclick=()=>{S.group=el.dataset.g;render();});
   document.querySelectorAll('tr[data-em]').forEach(tr=>tr.onclick=()=>openRec(tr.dataset.em));
+  document.querySelectorAll('[data-qt]').forEach(sel=>sel.onchange=async()=>{
+    const em=sel.dataset.qt, tier=Number(sel.value);
+    sel.disabled=true;
+    const {error}=await sb.from('clients').update({tier:tier,updated_at:new Date().toISOString()}).eq('email',em);
+    if(error){ alert('Could not update tier: '+error.message); }
+    const c=CLIENTS.find(x=>x.email===em); if(c) c.tier=tier;
+    sel.disabled=false; render();
+  });
+  document.querySelectorAll('[data-qe]').forEach(b=>b.onclick=async()=>{ await openRec(b.dataset.qe); S.editing=true; drawRec(); });
   document.querySelectorAll('[data-st]').forEach(el=>el.onclick=()=>{S.sendTier=el.dataset.st;render();});
   const sj=$('subj'); if(sj) sj.oninput=()=>{S.subject=sj.value;};
   const bt=$('btnTest');
