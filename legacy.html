@@ -527,7 +527,7 @@ function editForm(c){
    +t('birthday','Birthday',c.birthday,'Mar 14')
    +t('relationship_group','Relationship group',c.relationship_group)
    +'<div><label>Tier</label><select id="e_tier">'+[1,2,3].map(n=>'<option value="'+n+'"'+(c.tier===n?' selected':'')+'>Tier '+n+'</option>').join('')+'</select></div>'
-   +'<div><label>Status</label><select id="e_status">'+['active','review','departed','internal'].map(s=>'<option'+(c.status===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>'
+   +'<div><label>Status</label><select id="e_status">'+['active','review','contact','departed','internal'].map(s=>'<option'+(c.status===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>'
    +ta('key_people','Key people','','Spouse, partners, children — one per line')
    +ta('services','Services',c.services,'Monthly CAS, 1120-S, personal 1040…')
    +ta('milestones','Milestones',c.milestones,'Succession review 2027, daughter starts college…')
