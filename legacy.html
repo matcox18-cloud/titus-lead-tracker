@@ -457,6 +457,10 @@ td{padding:11px 18px;font-size:13.5px}
 .bar .lab{width:64px;font-size:12.5px}
 .bar .val{width:auto;white-space:nowrap;font-size:12px;text-align:right;min-width:150px}
 .bar .track{height:9px}
+.gap{color:#e9a33a;font-weight:600;font-size:11.5px;letter-spacing:.02em}
+.bar.clk{cursor:pointer}
+.bar.clk:hover{background:rgba(209,175,68,.09)}
+.bar.clk .fill{background:linear-gradient(90deg,#e9a33a,#f0c368)}
 
 </style></head>
 <body>
@@ -674,7 +678,7 @@ function viewDash(){
    +'<div class="kpis">'
    +kpi(a.length,'Active clients','all')+kpi(a.filter(c=>c.tier===1).length,'Tier 1','tier:1')
    +kpi(multi,'Multi-entity clients','multi')+kpi(a.filter(c=>c.household_size>1).length,'Shared households','household')
-   +kpi(review,'Awaiting review','review')+'</div>'
+   +kpi(review,'Awaiting review','review')+kpi(noEmail().length,'No email on file','noemail')+'</div>'
    +'<div class="panel"><div class="ph"><h3>Book by tier</h3><span class="hint">vs 20 / 60 / 20 target</span></div>'+bars+'<div style="height:8px"></div></div>'
    +'<div class="panel"><div class="ph"><h3>Deepest relationships</h3><span class="hint">by entity count</span></div><table><tbody>'+deepRows+'</tbody></table></div>'
    +panelTouch(a)+panelActivity()+panelBirthdays(a)+panelMilestones(a)+panelCompleteness(a);
@@ -740,18 +744,21 @@ function panelMilestones(a){
     +'<table><tbody>'+(rows||'<tr><td><div class="empty">No milestones recorded yet. Succession plans, a child starting college, a planned sale — add them on the client record so the team can be proactive.</div></td></tr>')+'</tbody></table></div>';
 }
 
+function noEmail(){ return CLIENTS.filter(c=>c.status==='needs_email'); }
 function panelCompleteness(a){
   const n=a.length||1;
+  const ne=noEmail().length, tot=a.length+ne;
   const rows=[
+    ['Email address', a.length, tot, 'noemail'],
     ['Relationship owner', a.filter(c=>(c.owner||'').trim()).length],
     ['Annual fees', a.filter(c=>c.annual_fees).length],
     ['Phone number', a.filter(c=>(c.phone||'').trim()).length],
     ['Birthday', a.filter(c=>(c.birthday||'').trim()).length],
     ['Any note', a.filter(c=>TOUCH[c.email]).length],
-  ].map(([lab,v])=>{
-    const pct=Math.round(100*v/n);
-    return '<div class="bar"><div class="lab">'+lab+'</div><div class="track"><div class="fill" style="width:'+pct+'%"></div></div>'
-      +'<div class="val">'+v+' of '+n+' · '+pct+'%</div></div>';
+  ].map(([lab,v,t,go])=>{
+    const d=t||n, pct=Math.round(100*v/d);
+    return '<div class="bar'+(go?' clk':'')+'"'+(go?' data-go="'+go+'"':'')+'><div class="lab">'+lab+'</div><div class="track"><div class="fill" style="width:'+pct+'%"></div></div>'
+      +'<div class="val">'+v+' of '+d+' · '+pct+'%'+(go&&ne?' <span class="gap">'+ne+' missing</span>':'')+'</div></div>';
   }).join('');
   return '<div class="panel"><div class="ph"><h3>Building out the book</h3><span class="hint">how complete your client records are</span></div>'+rows+'<div style="height:8px"></div></div>';
 }
@@ -760,9 +767,12 @@ const kpi=(n,l,go)=>'<div class="kpi"'+(go?' data-go="'+go+'"':'')+'><div class=
 const FILTERS={all:['All active clients',c=>true],
   multi:['Clients with 2+ entities',c=>c.account_count>1],
   household:['Shared-email households',c=>c.household_size>1],
-  review:['Awaiting review',c=>true]};
+  review:['Awaiting review',c=>true],
+  noemail:['No email address on file — cannot be mailed',c=>true]};
 function baseList(){
-  return S.cfilter==='review' ? CLIENTS.filter(c=>c.status==='review') : active();
+  if(S.cfilter==='review') return CLIENTS.filter(c=>c.status==='review');
+  if(S.cfilter==='noemail') return noEmail();
+  return active();
 }
 function viewClients(){
   let list=baseList();
@@ -797,7 +807,7 @@ const rowHtml=c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'<
   +'<td><select class="qtier" data-qt="'+esc(c.email)+'" onclick="event.stopPropagation()">'
   +[1,2,3].map(n=>'<option value="'+n+'"'+(c.tier===n?' selected':'')+'>Tier '+n+'</option>').join('')+'</select></td>'
   +'<td>'+(c.account_count||0)+'</td><td>'+esc(c.city||'')+'</td>'
-  +'<td class="hint">'+esc(c.email)+'</td>'
+  +'<td class="hint">'+(c.status==='needs_email'?'<span class="gap">no email on file</span>':esc(c.email))+'</td>'
   +'<td style="text-align:right"><button class="rowedit" data-qe="'+esc(c.email)+'" onclick="event.stopPropagation()">Edit</button></td></tr>';
 
 function viewEmail(){
