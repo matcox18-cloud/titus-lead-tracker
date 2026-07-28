@@ -653,6 +653,7 @@ select option{background:#0d1e3a;color:#eaf0f8}
 
 <!-- Add modal -->
 <div class="modal" id="modal"></div>
+<div class="modal" id="taxdomeModal"></div>
 
 <script>
 /* ============================================================
@@ -866,6 +867,44 @@ async function saveRoster(){
   if(!CLOUD) return;
   try{ await sb.from('settings').upsert({key:'roster', payload:ROSTER, updated_at:new Date().toISOString()}); updateSaveStatus(); }
   catch(e){ console.error('saveRoster', e); }
+}
+
+/* ==================== TAXDOME HANDOFF (via Zapier) ==================== */
+// The authoritative copy lives in settings and is re-read server-side on every send,
+// so the browser can never redirect the handoff somewhere else.
+let ZAPHOOK = '';
+async function loadZapHook(){
+  if(!CLOUD) return;
+  try{
+    const { data } = await sb.from('settings').select('payload').eq('key','zapier_webhook').maybeSingle();
+    ZAPHOOK = (data && data.payload && data.payload.url) ? String(data.payload.url) : '';
+  }catch(e){ console.error('loadZapHook', e); }
+}
+async function saveZapHook(url){
+  const u=String(url||'').trim();
+  if(u && !/^https:\/\/hooks\.zapier\.com\//.test(u)) return 'That should be a Zapier catch-hook URL starting with https://hooks.zapier.com/';
+  try{
+    await sb.from('settings').upsert({key:'zapier_webhook', payload:{url:u}, updated_at:new Date().toISOString()});
+    ZAPHOOK=u; return '';
+  }catch(e){ return 'Could not save: '+e.message; }
+}
+// Post a won lead to Zapier, which creates the Account + Contact in TaxDome.
+async function sendToTaxDome(id, resend){
+  const l = LEADS.find(x=>x.id===id); if(!l) return {error:'Lead not found.'};
+  if(!CLOUD) return {error:'TaxDome handoff needs the cloud connection.'};
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL+'/functions/v1/taxdome-handoff', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+session.access_token, apikey:SUPABASE_ANON_KEY },
+      body: JSON.stringify({ leadId:id, resend: !!resend })
+    });
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok) return j.error ? j : {error:'Handoff failed.'};
+    l.taxdomeSentAt = j.sentAt;
+    if(j.sent) l.activities.unshift({date:TODAY_ISO, type:'Stage', note:'Sent to TaxDome to create the client account.', by:CURRENT_USER});
+    return j;
+  }catch(e){ return {error:String(e)}; }
 }
 // Delete a single lead.
 async function deleteLead(id){
@@ -1166,6 +1205,25 @@ function viewAdmin(){
       <div class="roster-list">${rosterRows}</div>
     </div>
   </div>
+  <div class="panel" style="margin-bottom:18px">
+    <div class="panel-head"><h3>TaxDome handoff</h3><span class="hint">${ZAPHOOK?'Connected':'Not connected'}</span></div>
+    <div class="panel-body">
+      <p style="font-size:13px;line-height:1.6;margin-bottom:12px">
+        When a lead is moved to <b>Closed Won</b>, the Lead Tracker can send their details to Zapier, which
+        creates the Account and Contact in TaxDome. TaxDome then emails the client its own invitation so they
+        set their own password.
+      </p>
+      <p style="font-size:12.5px;line-height:1.6;margin-bottom:12px;color:#8ea3bf">
+        In Zapier: create a Zap with the trigger <b>Webhooks by Zapier → Catch Hook</b>, copy the URL it gives you
+        and paste it below. Then add the action <b>TaxDome → Create account/contact</b> and map the fields.
+      </p>
+      <div class="roster-add">
+        <input id="zapUrl" placeholder="https://hooks.zapier.com/hooks/catch/…" value="${ZAPHOOK?ZAPHOOK.replace(/"/g,'&quot;'):''}" />
+        <button class="btn btn-gold" id="zapSave">Save</button>
+      </div>
+      <div id="zapMsg" style="font-size:12.5px;min-height:16px;margin:6px 2px 0"></div>
+    </div>
+  </div>
   <div class="panel">
     <div class="panel-head"><h3>Originator Scoreboard</h3><span class="hint">Who's bringing in business</span></div>
     <div class="panel-body">
@@ -1259,6 +1317,20 @@ function bindContent(){
     col.ondragleave=()=>colEl.classList.remove('drop-on');
     col.ondrop=e=>{ e.preventDefault(); colEl.classList.remove('drop-on'); moveStage(dragId, col.dataset.stage); };
   });
+  // Admin: TaxDome / Zapier webhook
+  const zSave=document.getElementById('zapSave');
+  if(zSave){
+    zSave.onclick=async()=>{
+      const el=document.getElementById('zapUrl'), m=document.getElementById('zapMsg');
+      zSave.disabled=true; zSave.textContent='Saving…';
+      const err=await saveZapHook(el.value);
+      zSave.disabled=false; zSave.textContent='Save';
+      if(err){ m.style.color='var(--danger)'; m.textContent=err; return; }
+      m.style.color='var(--good)';
+      m.textContent=ZAPHOOK?'Connected. Closed Won leads can now be sent to TaxDome.':'Cleared — the handoff is switched off.';
+      render();
+    };
+  }
   // Admin: roster add / remove
   const rAdd=document.getElementById('rosterAdd');
   if(rAdd){
@@ -1289,7 +1361,60 @@ function moveStage(id, stage){
   l.activities.unshift({date:TODAY_ISO, type:'Stage', note:`Moved from ${from} to ${to}.`, by:CURRENT_USER});
   l.lastTouch={date:TODAY_ISO, type:'Stage'};
   saveLead(l); render();
+  // Closed Won is the handoff point: offer to create the client in TaxDome.
+  if(stage==='won' && !l.taxdomeSentAt) setTimeout(()=>openTaxDome(l.id), 200);
 }
+
+/* ---- TaxDome handoff modal ---- */
+function openTaxDome(id){
+  const l=LEADS.find(x=>x.id===id); if(!l) return;
+  const clean=v=>{const s=String(v==null?'':v).trim(); return (!s||s==='—')?'':s;};
+  const parts=clean(l.name).split(/\s+/);
+  const company=clean(l.company);
+  const rows=[
+    ['Account name', company || clean(l.name)],
+    ['First name', parts[0]||''],
+    ['Last name', parts.slice(1).join(' ')],
+    ['Email', clean(l.email)],
+    ['Phone', clean(l.phone)],
+    ['Est. annual fees', l.value?fmtMoney(l.value):''],
+    ['Origination owner', clean(l.origination)]
+  ];
+  const missing=rows.filter(r=>r[0]==='Email'&&!r[1]).length;
+  const body=rows.map(([k,v])=>`<div class="field"><div class="l">${k}</div><div class="v">${v||'<span style="color:var(--warn)">not set</span>'}</div></div>`).join('');
+  const m=document.getElementById('taxdomeModal');
+  m.innerHTML=`<div class="modal-card" style="width:520px">
+    <div class="modal-head"><h3>Set up ${clean(l.name)} in TaxDome</h3><button class="dr-close" onclick="closeTaxDome()">&times;</button></div>
+    <div class="modal-body">
+      ${!ZAPHOOK?`<div class="nextbox" style="margin-bottom:14px"><div class="l">Not connected yet</div>
+        <div style="font-size:13px;line-height:1.5">Add your Zapier catch-hook URL under <b>Team &amp; Originators → TaxDome handoff</b>, then this button will create the account for you.</div></div>`:''}
+      ${missing?`<div class="nextbox" style="margin-bottom:14px;border-color:#e0a33a"><div class="l">No email address</div>
+        <div style="font-size:13px;line-height:1.5">TaxDome needs an email to invite the client. Add one on the lead first.</div></div>`:''}
+      <p style="font-size:13px;color:#a9bedd;line-height:1.55;margin-bottom:14px">This creates the Account and Contact in TaxDome. TaxDome then emails ${parts[0]||'them'} an invitation so they set their own password — we never create it for them.</p>
+      <div class="dr-grid">${body}</div>
+      <div id="tdMsg" style="font-size:13px;margin-top:14px;min-height:18px;line-height:1.45"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeTaxDome()">Not now</button>
+      <button class="btn btn-gold" id="tdGo" ${(!ZAPHOOK||missing)?'disabled style="opacity:.5;cursor:not-allowed"':''}>Create in TaxDome</button>
+    </div>
+  </div>`;
+  m.classList.add('show');
+  const go=document.getElementById('tdGo');
+  if(go) go.onclick=async()=>{
+    const msg=document.getElementById('tdMsg');
+    go.disabled=true; go.textContent='Sending…'; msg.textContent='';
+    const r=await sendToTaxDome(id, false);
+    if(r.error){
+      msg.style.color='var(--danger)'; msg.textContent=r.error;
+      go.disabled=false; go.textContent='Create in TaxDome'; return;
+    }
+    msg.style.color='var(--good)'; msg.textContent='Sent. TaxDome is creating the account and will email the invitation.';
+    go.textContent='Sent ✓';
+    setTimeout(()=>{ closeTaxDome(); render(); if(state.selected===id) openDrawer(id); }, 1400);
+  };
+}
+function closeTaxDome(){ document.getElementById('taxdomeModal').classList.remove('show'); }
 
 /* ---- CSV export (spreadsheet-friendly, includes stage-timing metrics) ---- */
 function downloadCSV(){
@@ -1354,6 +1479,17 @@ function openDrawer(id){
         <div class="field"><div class="l">Lead Created</div><div class="v">${fmtDate(l.created)} (${daysAgo(l.created)}d ago)</div></div>
       </div>
       ${l.notes?`<div class="field" style="margin-top:14px"><div class="l">Notes</div><div class="v" style="white-space:pre-wrap;line-height:1.55">${String(l.notes).replace(/</g,'&lt;')}</div></div>`:''}
+
+      ${(l.stage==='won'||l.stage==='onboarding')?`
+      <div class="sect-title">TaxDome</div>
+      ${l.taxdomeSentAt
+        ? `<div class="nextbox"><div class="l">Client account created</div>
+             <div class="act" style="font-size:13.5px">Sent to TaxDome on ${fmtDate(String(l.taxdomeSentAt).slice(0,10))}</div>
+             <div class="due">TaxDome emails the invitation; the client sets their own password.</div></div>`
+        : `<div class="nextbox"><div class="l">Ready to set up</div>
+             <div class="act" style="font-size:13.5px">Not yet in TaxDome</div>
+             <div style="margin-top:10px"><button class="btn btn-gold" onclick="openTaxDome(${l.id})">Create in TaxDome</button></div></div>`}
+      `:''}
 
       <div class="sect-title">Move Stage</div>
       <div class="stage-pick" id="stagePick">${stagePick}</div>
@@ -1646,7 +1782,7 @@ async function enterApp(){
   CURRENT_USER = niceName(CURRENT_EMAIL || 'Team Member');
   setUserBadge();
   const b=document.getElementById('cloudBanner'); if(b){ b.style.display='block'; b.textContent='☁ Shared cloud mode — synced across your team'; }
-  await loadRoster();
+  await loadRoster(); await loadZapHook();
   LEADS = await cloudLoad();
   if(!LEADS.length){ LEADS = ensureTouch(JSON.parse(JSON.stringify(SEED_LEADS))); await saveAll(); }
   render(); updateSaveStatus();
@@ -1710,7 +1846,7 @@ function subscribeRealtime(){
       if(sel && LEADS.find(l=>l.id===sel)) openDrawer(sel);
     }).subscribe();
     sb.channel('settings-rt').on('postgres_changes',{event:'*',schema:'public',table:'settings'}, async ()=>{
-      await loadRoster(); render();
+      await loadRoster(); await loadZapHook(); render();
     }).subscribe();
   }catch(e){ console.error('realtime', e); }
 }
