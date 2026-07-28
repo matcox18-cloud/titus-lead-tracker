@@ -392,6 +392,57 @@ select option{background:#0d1e3a;color:#eaf0f8}
 .mnav button{color:#8ea3bf}
 .mnav button.on{color:var(--gold-soft);box-shadow:inset 0 2px 0 var(--gold)}
 
+
+/* ============ LAYOUT + TYPE FIX ============ */
+/* clean sans throughout */
+body,.btn,input,select,textarea,button{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+}
+.topbar h1,.ph h3,.kpi .n,.dr-head .nm,.sect,.gname,.login-card h2,.modal-head h2,.brand-text .b1{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif!important;
+  letter-spacing:-.015em;
+}
+.topbar h1{font-weight:700;font-size:24px}
+.ph h3{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.kpi .n{font-weight:800;font-size:34px;letter-spacing:-.03em}
+.dr-head .nm{font-weight:700;font-size:23px}
+.sect{font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.09em}
+.login-card h2,.modal-head h2{font-weight:700}
+.nav-foot .tagline{font-style:normal}
+
+/* sidebar back to fixed, main flush against it, no dead space */
+.sidebar{
+  position:fixed!important;top:0;bottom:0;left:0;z-index:40;width:236px!important;
+  border-right:1px solid rgba(255,255,255,.14);
+  box-shadow:2px 0 0 rgba(226,194,95,.16), 20px 0 60px rgba(0,0,0,.45);
+}
+.main{margin-left:236px!important;width:calc(100% - 236px);max-width:none}
+.content{max-width:none!important;padding:22px 26px 70px!important;width:100%}
+.topbar{padding:16px 26px!important}
+body{display:block!important}
+
+/* denser, wider use of space */
+.kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{padding:16px 18px}
+.kpi .l{font-size:9.5px;letter-spacing:1.3px;margin-top:6px}
+.panel{margin-bottom:16px}
+.ph{padding:14px 18px}
+th{padding:10px 18px}
+td{padding:11px 18px;font-size:13.5px}
+.bar{padding:10px 18px}
+.toolbar{padding:13px 18px}
+
+/* side-by-side panels on wide screens */
+@media(min-width:1280px){
+  .content{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-content:start}
+  .content > .psub,.content > .kpis{grid-column:1 / -1}
+  .content > .panel{margin-bottom:0}
+  .content > .panel:nth-of-type(1){grid-column:1 / -1}   /* book by tier full width */
+}
+
+/* clearer separation between rail and canvas */
+.main{background:linear-gradient(90deg, rgba(255,255,255,.035) 0px, rgba(255,255,255,0) 26px)}
+
 </style></head>
 <body>
 <aside class="sidebar">
