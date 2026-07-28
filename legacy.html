@@ -568,6 +568,11 @@ async function load(){
   $('cnt').textContent=active().length+' active clients';
 }
 const active=()=>CLIENTS.filter(c=>c.status==='active');
+// Clients with no real email are stored on a synthetic key. They ARE active clients
+// (they count in the book) but can never be mailed.
+const NOMAIL='@no-email.titus';
+const hasEmail=c=>!String(c.email||'').toLowerCase().endsWith(NOMAIL);
+const mailable=()=>active().filter(hasEmail);
 const money=n=>'$'+Number(n||0).toLocaleString();
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const tierBadge=t=>t?'<span class="tb t'+t+'">Tier '+t+'</span>':'<span class="badge">—</span>';
@@ -665,20 +670,26 @@ function render(){
 }
 function viewDash(){
   const a=active();
+  const tiered=a.filter(c=>c.tier).length, untiered=a.length-tiered;
   const byTier=[1,2,3].map(t=>({t,n:a.filter(c=>c.tier===t).length}));
   const max=Math.max(...byTier.map(x=>x.n),1);
   const target={1:20,2:60,3:20};
-  const bars=byTier.map(x=>{const pct=a.length?Math.round(100*x.n/a.length):0;
+  let bars=byTier.map(x=>{const pct=tiered?Math.round(100*x.n/tiered):0;
     return '<div class="bar" data-go="tier:'+x.t+'"><div class="lab">Tier '+x.t+'</div><div class="track"><div class="fill" style="width:'+(100*x.n/max)+'%"></div></div><div class="val">'+x.n+' · '+pct+'% <span class="hint">(goal '+target[x.t]+'%)</span></div></div>';}).join('');
+  if(untiered) bars+='<div class="bar clk" data-go="untiered"><div class="lab">Not tiered</div><div class="track"><div class="fill" style="width:'+(100*untiered/max)+'%"></div></div>'
+    +'<div class="val"><span class="gap">'+untiered+' to assign</span></div></div>';
   const multi=a.filter(c=>c.account_count>1).length;
   const deep=a.filter(c=>c.account_count>=5).sort((x,y)=>y.account_count-x.account_count).slice(0,8);
   const deepRows=deep.map(c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'</b>'+(c.relationship_group?' <span class="badge">'+esc(c.relationship_group)+'</span>':'')+'</td><td>'+tierBadge(c.tier)+'</td><td style="text-align:right">'+c.account_count+' accounts</td></tr>').join('');
   const review=CLIENTS.filter(c=>c.status==='review').length;
-  return '<p class="psub">'+a.length+' active clients.</p>'
+  const ne=noEmail().length;
+  return '<p class="psub">'+a.length+' active clients · <b>'+(a.length-ne)+'</b> can be emailed'
+   +(ne?', <span class="gap">'+ne+' have no address on file</span>':'')+'.</p>'
    +'<div class="kpis">'
-   +kpi(a.length,'Active clients','all')+kpi(a.filter(c=>c.tier===1).length,'Tier 1','tier:1')
+   +kpi(a.length,'Active clients','all')+kpi(a.length-ne,'Can be emailed','all')
+   +kpi(a.filter(c=>c.tier===1).length,'Tier 1','tier:1')
    +kpi(multi,'Multi-entity clients','multi')+kpi(a.filter(c=>c.household_size>1).length,'Shared households','household')
-   +kpi(review,'Awaiting review','review')+kpi(noEmail().length,'No email on file','noemail')+'</div>'
+   +kpi(review,'Awaiting review','review')+kpi(ne,'No email on file','noemail')+'</div>'
    +'<div class="panel"><div class="ph"><h3>Book by tier</h3><span class="hint">vs 20 / 60 / 20 target</span></div>'+bars+'<div style="height:8px"></div></div>'
    +'<div class="panel"><div class="ph"><h3>Deepest relationships</h3><span class="hint">by entity count</span></div><table><tbody>'+deepRows+'</tbody></table></div>'
    +panelTouch(a)+panelActivity()+panelBirthdays(a)+panelMilestones(a)+panelCompleteness(a);
@@ -744,12 +755,12 @@ function panelMilestones(a){
     +'<table><tbody>'+(rows||'<tr><td><div class="empty">No milestones recorded yet. Succession plans, a child starting college, a planned sale — add them on the client record so the team can be proactive.</div></td></tr>')+'</tbody></table></div>';
 }
 
-function noEmail(){ return CLIENTS.filter(c=>c.status==='needs_email'); }
+function noEmail(){ return active().filter(c=>!hasEmail(c)); }
 function panelCompleteness(a){
   const n=a.length||1;
-  const ne=noEmail().length, tot=a.length+ne;
+  const ne=noEmail().length;
   const rows=[
-    ['Email address', a.length, tot, 'noemail'],
+    ['Email address', a.filter(hasEmail).length, n, 'noemail'],
     ['Relationship owner', a.filter(c=>(c.owner||'').trim()).length],
     ['Annual fees', a.filter(c=>c.annual_fees).length],
     ['Phone number', a.filter(c=>(c.phone||'').trim()).length],
@@ -768,10 +779,12 @@ const FILTERS={all:['All active clients',c=>true],
   multi:['Clients with 2+ entities',c=>c.account_count>1],
   household:['Shared-email households',c=>c.household_size>1],
   review:['Awaiting review',c=>true],
-  noemail:['No email address on file — cannot be mailed',c=>true]};
+  noemail:['No email address on file — cannot be mailed',c=>true],
+  untiered:['Not yet tiered',c=>true]};
 function baseList(){
   if(S.cfilter==='review') return CLIENTS.filter(c=>c.status==='review');
   if(S.cfilter==='noemail') return noEmail();
+  if(S.cfilter==='untiered') return active().filter(c=>!c.tier);
   return active();
 }
 function viewClients(){
@@ -808,14 +821,15 @@ const rowHtml=c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'<
   +(c.tier?'':'<option value="" selected>Not tiered</option>')
   +[1,2,3].map(n=>'<option value="'+n+'"'+(c.tier===n?' selected':'')+'>Tier '+n+'</option>').join('')+'</select></td>'
   +'<td>'+(c.account_count||0)+'</td><td>'+esc(c.city||'')+'</td>'
-  +'<td class="hint">'+(c.status==='needs_email'?'<span class="gap">no email on file</span>':esc(c.email))+'</td>'
+  +'<td class="hint">'+(hasEmail(c)?esc(c.email):'<span class="gap">no email on file</span>')+'</td>'
   +'<td style="text-align:right"><button class="rowedit" data-qe="'+esc(c.email)+'" onclick="event.stopPropagation()">Edit</button></td></tr>';
 
 function viewEmail(){
-  const a=active().filter(c=>c.subscribed!==false);
+  // Only clients with a real, deliverable address can ever be a recipient.
+  const a=mailable().filter(c=>c.subscribed!==false);
   const t=S.sendTier? a.filter(c=>c.tier===Number(S.sendTier)) : a;
   const uniq=[...new Set(t.map(c=>c.email.toLowerCase()))].length;
-  const unsub=active().filter(c=>c.subscribed===false).length;
+  const unsub=mailable().filter(c=>c.subscribed===false).length;
   const pills=['','1','2','3'].map(v=>'<span class="pill '+(S.sendTier===v?'on':'')+'" data-st="'+v+'">'+(v?'Tier '+v:'All active clients')+'</span>').join('');
   const hist=(S.sends||[]).map(s=>'<tr><td>'+esc(s.subject||'')+'</td><td>'+esc(s.audience||'')+'</td><td>'+(s.recipients||0)+'</td><td>'+(s.failed?('<span style="color:var(--danger)">'+s.failed+' failed</span>'):'ok')+'</td><td class="hint">'+new Date(s.created_at).toLocaleString()+'</td></tr>').join('')
     || '<tr><td colspan="5"><div class="empty">No newsletters sent yet.</div></td></tr>';
@@ -1103,7 +1117,10 @@ function editForm(c){
    +t('owner','Relationship owner',c.owner)
    +t('birthday','Birthday',c.birthday,'Mar 14')
    +t('relationship_group','Relationship group',c.relationship_group)
-   +'<div><label>Tier</label><select id="e_tier">'+[1,2,3].map(n=>'<option value="'+n+'"'+(c.tier===n?' selected':'')+'>Tier '+n+'</option>').join('')+'</select></div>'
+   +t('email','Email address',hasEmail(c)?c.email:'','name@example.com')
+   +'<div><label>Tier</label><select id="e_tier">'
+     +(c.tier?'':'<option value="" selected>Not tiered</option>')
+     +[1,2,3].map(n=>'<option value="'+n+'"'+(c.tier===n?' selected':'')+'>Tier '+n+'</option>').join('')+'</select></div>'
    +'<div><label>Status</label><select id="e_status">'+['active','review','contact','departed','internal'].map(s=>'<option'+(c.status===s?' selected':'')+'>'+s+'</option>').join('')+'</select></div>'
    +ta('key_people','Key people','','Spouse, partners, children — one per line')
    +ta('services','Services',c.services,'Monthly CAS, 1120-S, personal 1040…')
@@ -1119,14 +1136,25 @@ async function saveRec(){
     referral_source:g('referral_source'),owner:g('owner'),birthday:g('birthday'),
     relationship_group:g('relationship_group'),key_people:g('key_people'),services:g('services'),
     milestones:g('milestones'),summary:g('summary'),
-    tier:Number($('e_tier').value)||null,status:$('e_status').value,
+    tier:$('e_tier').value?Number($('e_tier').value):null,status:$('e_status').value,
     annual_fees:(g('annual_fees')||'').replace(/[^0-9.]/g,'')||null,
     updated_at:new Date().toISOString()};
+
+  // Email is the primary key. Adding/changing one rewrites the key, which is how a
+  // "no email on file" client becomes mailable.
+  const newEmail=(g('email')||'').trim().toLowerCase();
+  const oldEmail=c.email;
+  if(newEmail && newEmail!==oldEmail.toLowerCase()){
+    if(!/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/.test(newEmail)){ alert('That does not look like a valid email address.'); return; }
+    if(CLIENTS.some(x=>x.email.toLowerCase()===newEmail)){ alert('Another client already uses '+newEmail+'.'); return; }
+    patch.email=newEmail; patch.subscribed=true;
+  }
+
   const btn=$('recSave'); btn.disabled=true; btn.textContent='Saving…';
-  const {error}=await sb.from('clients').update(patch).eq('email',c.email);
+  const {error}=await sb.from('clients').update(patch).eq('email',oldEmail);
   if(error){ alert('Could not save: '+error.message); btn.disabled=false; btn.textContent='Save changes'; return; }
   Object.assign(c,patch); S.editing=false;
-  await load(); S.rec=CLIENTS.find(x=>x.email===c.email)||c;
+  await load(); S.rec=CLIENTS.find(x=>x.email===(patch.email||oldEmail))||c;
   drawRec(); render();
 }
 async function addNote(){
