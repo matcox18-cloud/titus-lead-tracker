@@ -443,6 +443,21 @@ td{padding:11px 18px;font-size:13.5px}
 /* clearer separation between rail and canvas */
 .main{background:linear-gradient(90deg, rgba(255,255,255,.035) 0px, rgba(255,255,255,0) 26px)}
 
+
+/* ============ PANEL HEIGHT / DENSITY ============ */
+@media(min-width:1280px){
+  /* panels size to their own content instead of stretching to the row */
+  .content{align-items:start}
+  .content > .panel{align-self:start}
+  /* let Book by tier share the row rather than span it */
+  .content > .panel:nth-of-type(1){grid-column:auto}
+}
+/* tier bars sit closer together so the panel isn't tall and empty */
+.bar{padding:9px 18px}
+.bar .lab{width:64px;font-size:12.5px}
+.bar .val{width:auto;white-space:nowrap;font-size:12px;text-align:right;min-width:150px}
+.bar .track{height:9px}
+
 </style></head>
 <body>
 <aside class="sidebar">
