@@ -191,7 +191,7 @@ const LOGO='data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVV
 document.getElementById('brand').src=LOGO; document.getElementById('loginMark').src=LOGO;
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
 const $=i=>document.getElementById(i);
-let CLIENTS=[], CONN=[], REFS={}, SESSION=null, EMAIL='';
+let CLIENTS=[], CONN=[], REFS={}, ALLNOTES=[], TOUCH={}, SESSION=null, EMAIL='';
 let S={view:'dashboard', q:'', tier:'', group:'flat'};
 const TABS=[['dashboard','Dashboard'],['clients','Clients'],['connectors','Connectors'],['email','Email & Marketing']];
 
@@ -206,7 +206,7 @@ async function enter(){
   $('login').classList.remove('show');
   EMAIL=(SESSION&&SESSION.user?SESSION.user.email:'')||'';
   $('av').textContent=(EMAIL[0]||'?').toUpperCase();
-  await load(); await loadSends(); await loadConnectors(); renderTabs(); render(); checkWon();
+  await load(); await loadSends(); await loadConnectors(); await loadTouch(); renderTabs(); render(); checkWon();
 }
 $('loginBtn').onclick=async()=>{
   const em=$('loginEmail').value.trim(); const m=$('loginMsg');
@@ -346,7 +346,81 @@ function viewDash(){
    +kpi(multi,'Multi-entity clients','multi')+kpi(a.filter(c=>c.household_size>1).length,'Shared households','household')
    +kpi(review,'Awaiting review','review')+'</div>'
    +'<div class="panel"><div class="ph"><h3>Book by tier</h3><span class="hint">vs 20 / 60 / 20 target</span></div>'+bars+'<div style="height:8px"></div></div>'
-   +'<div class="panel"><div class="ph"><h3>Deepest relationships</h3><span class="hint">by entity count</span></div><table><tbody>'+deepRows+'</tbody></table></div>';
+   +'<div class="panel"><div class="ph"><h3>Deepest relationships</h3><span class="hint">by entity count</span></div><table><tbody>'+deepRows+'</tbody></table></div>'
+   +panelTouch(a)+panelActivity()+panelBirthdays(a)+panelMilestones(a)+panelCompleteness(a);
+}
+
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function daysSince(iso){ return Math.floor((Date.now()-new Date(iso).getTime())/86400000); }
+
+function panelTouch(a){
+  // Tier 1 and 2 clients we have never noted, or haven't noted in a long time
+  const rows=a.filter(c=>c.tier===1||c.tier===2)
+    .map(c=>({c, last:TOUCH[c.email]||null}))
+    .sort((x,y)=>{ if(!x.last&&!y.last) return (x.c.tier-y.c.tier)||(y.c.account_count-x.c.account_count);
+                   if(!x.last) return -1; if(!y.last) return 1; return new Date(x.last)-new Date(y.last); })
+    .slice(0,8);
+  const body=rows.map(r=>'<tr data-em="'+esc(r.c.email)+'"><td><b>'+esc(r.c.contact_name)+'</b>'
+    +(r.c.company?'<div class="hint">'+esc(r.c.company)+'</div>':'')+'</td>'
+    +'<td>'+tierBadge(r.c.tier)+'</td>'
+    +'<td style="text-align:right" class="hint">'+(r.last?('last note '+daysSince(r.last)+'d ago'):'<span style="color:var(--amber)">never noted</span>')+'</td></tr>').join('');
+  const never=a.filter(c=>(c.tier===1||c.tier===2)&&!TOUCH[c.email]).length;
+  return '<div class="panel"><div class="ph"><h3>Needs a touchpoint</h3><span class="hint">'+never+' of your Tier 1 &amp; 2 clients have no notes</span></div>'
+    +'<table><tbody>'+(body||'<tr><td><div class="empty">Everyone has been noted recently.</div></td></tr>')+'</tbody></table></div>';
+}
+
+function panelActivity(){
+  const rows=ALLNOTES.slice(0,6).map(n=>{
+    const c=CLIENTS.find(x=>x.email===n.client_email);
+    return '<tr data-em="'+esc(n.client_email)+'"><td><b>'+esc(c?c.contact_name:n.client_email)+'</b>'
+      +'<div class="hint">'+esc(n.note.replace(/\s+/g,' ').slice(0,90))+(n.note.length>90?'…':'')+'</div></td>'
+      +'<td style="text-align:right" class="hint">'+new Date(n.created_at).toLocaleDateString()+'</td></tr>';
+  }).join('');
+  return '<div class="panel"><div class="ph"><h3>Recent activity</h3><span class="hint">latest notes across all clients</span></div>'
+    +'<table><tbody>'+(rows||'<tr><td><div class="empty">No notes yet. Open any client and add what your team knows.</div></td></tr>')+'</tbody></table></div>';
+}
+
+function panelBirthdays(a){
+  const withB=a.filter(c=>(c.birthday||'').trim());
+  const parsed=withB.map(c=>{
+    const m=String(c.birthday).match(/([A-Za-z]{3,})\s*(\d{1,2})/);
+    if(!m) return null;
+    const mi=MONTHS.findIndex(x=>m[1].toLowerCase().startsWith(x.toLowerCase()));
+    if(mi<0) return null;
+    const now=new Date(); let d=new Date(now.getFullYear(),mi,Number(m[2]));
+    if(d<now) d=new Date(now.getFullYear()+1,mi,Number(m[2]));
+    return {c,d,due:Math.round((d-now)/86400000)};
+  }).filter(Boolean).sort((x,y)=>x.due-y.due).slice(0,6);
+  const rows=parsed.map(p=>'<tr data-em="'+esc(p.c.email)+'"><td><b>'+esc(p.c.contact_name)+'</b></td>'
+    +'<td>'+tierBadge(p.c.tier)+'</td>'
+    +'<td style="text-align:right" class="hint">'+esc(p.c.birthday)+' · in '+p.due+'d</td></tr>').join('');
+  return '<div class="panel"><div class="ph"><h3>Upcoming birthdays</h3><span class="hint">'+withB.length+' on file</span></div>'
+    +'<table><tbody>'+(rows||'<tr><td><div class="empty">No birthdays recorded yet. Add one on a client record and they will appear here — Tier 1 and 2 clients get birthday recognition under your service standard.</div></td></tr>')+'</tbody></table></div>';
+}
+
+function panelMilestones(a){
+  const withM=a.filter(c=>(c.milestones||'').trim()).slice(0,6);
+  const rows=withM.map(c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'</b>'
+    +'<div class="hint">'+esc(c.milestones.replace(/\n/g,' · ').slice(0,90))+'</div></td>'
+    +'<td style="text-align:right">'+tierBadge(c.tier)+'</td></tr>').join('');
+  return '<div class="panel"><div class="ph"><h3>Milestones ahead</h3><span class="hint">'+a.filter(c=>(c.milestones||'').trim()).length+' recorded</span></div>'
+    +'<table><tbody>'+(rows||'<tr><td><div class="empty">No milestones recorded yet. Succession plans, a child starting college, a planned sale — add them on the client record so the team can be proactive.</div></td></tr>')+'</tbody></table></div>';
+}
+
+function panelCompleteness(a){
+  const n=a.length||1;
+  const rows=[
+    ['Relationship owner', a.filter(c=>(c.owner||'').trim()).length],
+    ['Annual fees', a.filter(c=>c.annual_fees).length],
+    ['Phone number', a.filter(c=>(c.phone||'').trim()).length],
+    ['Birthday', a.filter(c=>(c.birthday||'').trim()).length],
+    ['Any note', a.filter(c=>TOUCH[c.email]).length],
+  ].map(([lab,v])=>{
+    const pct=Math.round(100*v/n);
+    return '<div class="bar"><div class="lab">'+lab+'</div><div class="track"><div class="fill" style="width:'+pct+'%"></div></div>'
+      +'<div class="val">'+v+' of '+n+' · '+pct+'%</div></div>';
+  }).join('');
+  return '<div class="panel"><div class="ph"><h3>Building out the book</h3><span class="hint">how complete your client records are</span></div>'+rows+'<div style="height:8px"></div></div>';
 }
 const kpi=(n,l,go)=>'<div class="kpi"'+(go?' data-go="'+go+'"':'')+'><div class="n">'+n+'</div><div class="l">'+l+'</div></div>';
 
@@ -438,6 +512,13 @@ function viewEmail(){
   +'<table><thead><tr><th>Subject</th><th>Audience</th><th>Recipients</th><th>Result</th><th>When</th></tr></thead><tbody>'+hist+'</tbody></table></div>';
 }
 
+async function loadTouch(){
+  try{
+    const {data}=await sb.from('client_notes').select('client_email,note,author,created_at').order('created_at',{ascending:false}).limit(500);
+    ALLNOTES=data||[]; TOUCH={};
+    ALLNOTES.forEach(n=>{ if(!TOUCH[n.client_email]) TOUCH[n.client_email]=n.created_at; });
+  }catch(e){ ALLNOTES=[]; TOUCH={}; }
+}
 async function loadConnectors(){
   try{
     const {data}=await sb.from('connectors').select('*').order('name');
