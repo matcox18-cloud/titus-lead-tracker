@@ -31,6 +31,23 @@ body{display:flex;min-height:100vh}
 .av{width:34px;height:34px;border-radius:50%;background:var(--gold);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0}
 .drawer{width:min(680px,100%)}
 .dr-body .f .v{word-break:break-word}
+.scard{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:6px}
+.scard .hd{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:#faf7ef;border-bottom:1px solid var(--line)}
+.scard .hd b{font-size:13px;color:var(--navy)}
+.screq{font-size:11.5px;color:var(--muted)}
+.scrow{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #f2f4f7}
+.scrow:last-child{border-bottom:none}
+.scrow .cn{flex:1;min-width:0}
+.scrow .cn b{font-size:13px;font-weight:600;color:var(--ink);display:block}
+.scrow .cn span{font-size:11.5px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-shrink:0}
+.seg button{background:#fff;border:none;padding:5px 11px;font:inherit;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button:hover{background:#faf7ef}
+.seg button.on.plus{background:#e8f0e9;color:#2f7d4f}
+.seg button.on.mid{background:#f7f0e0;color:#8a6d1f}
+.seg button.on.minus{background:#f7eceb;color:#b0453a}
+.scsum{padding:11px 14px;background:#fbf9f3;font-size:13px}
 .sumbox{background:#faf7ef;border:1px solid #ecdfb4;border-radius:11px;padding:14px 16px;margin-bottom:6px}
 .sumbox .lbl{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--gold-deep);font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
 .sumbox p{margin:0 0 8px;font-size:13.5px;line-height:1.65;color:#3f4751}
@@ -370,6 +387,7 @@ function panelTouch(a){
 }
 
 function panelActivity(){
+  if(!ALLNOTES.length) return '';
   const rows=ALLNOTES.slice(0,6).map(n=>{
     const c=CLIENTS.find(x=>x.email===n.client_email);
     return '<tr data-em="'+esc(n.client_email)+'"><td><b>'+esc(c?c.contact_name:n.client_email)+'</b>'
@@ -382,6 +400,7 @@ function panelActivity(){
 
 function panelBirthdays(a){
   const withB=a.filter(c=>(c.birthday||'').trim());
+  if(!withB.length) return '';
   const parsed=withB.map(c=>{
     const m=String(c.birthday).match(/([A-Za-z]{3,})\s*(\d{1,2})/);
     if(!m) return null;
@@ -400,6 +419,7 @@ function panelBirthdays(a){
 
 function panelMilestones(a){
   const withM=a.filter(c=>(c.milestones||'').trim()).slice(0,6);
+  if(!withM.length) return '';
   const rows=withM.map(c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'</b>'
     +'<div class="hint">'+esc(c.milestones.replace(/\n/g,' · ').slice(0,90))+'</div></td>'
     +'<td style="text-align:right">'+tierBadge(c.tier)+'</td></tr>').join('');
@@ -670,7 +690,54 @@ function drawRec(){
   $('recEdit').onclick=()=>{ S.editing=!S.editing; drawRec(); };
   const an=$('addNote'); if(an) an.onclick=addNote;
   const bs=$('buildSum'); if(bs) bs.onclick=buildSummary;
+  document.querySelectorAll('[data-sc]').forEach(b=>b.onclick=async()=>{
+    const k=b.dataset.sc, v=b.dataset.scv;
+    const cur=S.rec[k]===v?null:v;              // click again to clear
+    S.rec[k]=cur;
+    const patch={}; patch[k]=cur;
+    patch.sc_updated_at=new Date().toISOString(); patch.sc_updated_by=EMAIL;
+    S.rec.sc_updated_at=patch.sc_updated_at; S.rec.sc_updated_by=EMAIL;
+    drawRec();
+    const {error}=await sb.from('clients').update(patch).eq('email',S.rec.email);
+    if(error) alert('Could not save score: '+error.message);
+    const c=CLIENTS.find(x=>x.email===S.rec.email); if(c) Object.assign(c,patch);
+  });
+  const sp=$('scPromote'); if(sp) sp.onclick=async()=>{
+    S.rec.tier=1;
+    await sb.from('clients').update({tier:1,updated_at:new Date().toISOString()}).eq('email',S.rec.email);
+    const c=CLIENTS.find(x=>x.email===S.rec.email); if(c) c.tier=1;
+    drawRec(); render();
+  };
   const sv=$('recSave'); if(sv) sv.onclick=saveRec;
+}
+const CRIT=[
+ ['sc_fees','Fees','Over $25k  ·  $15–25k  ·  Under $15k'],
+ ['sc_longevity','Longevity with firm','10+ yrs  ·  5–10 yrs  ·  Under 5 yrs'],
+ ['sc_referral','Referral source','Active referrer  ·  Referred once  ·  No'],
+ ['sc_influence','Community influence','High  ·  Moderate  ·  Low'],
+ ['sc_services','Year-round services','Year-round  ·  Partial-year  ·  Annual only']
+];
+function scoreCard(c){
+  const rows=CRIT.map(([k,lab,hint])=>{
+    const v=c[k]||'';
+    const b=(val,cls,txt)=>'<button class="'+cls+(v===val?' on':'')+'" data-sc="'+k+'" data-scv="'+val+'">'+txt+'</button>';
+    return '<div class="scrow"><div class="cn"><b>'+lab+'</b><span>'+hint+'</span></div>'
+      +'<div class="seg">'+b('+','plus','+')+b('+/-','mid','+/−')+b('-','minus','−')+'</div></div>';
+  }).join('');
+  const plus=CRIT.filter(([k])=>c[k]==='+').length;
+  const scored=CRIT.filter(([k])=>c[k]).length;
+  const qualifies=plus>=3;
+  const verdict = scored===0
+    ? '<span class="hint">Not scored yet — mark each criterion to test Tier 1 qualification.</span>'
+    : '<b>'+plus+' of 5 pluses.</b> '+(qualifies
+        ? '<span style="color:var(--good)">Qualifies for Tier 1.</span>'
+        : '<span class="hint">Needs 3 pluses for Tier 1'+(c.tier===1?' — currently marked Tier 1.':'.')+'</span>')
+      +(qualifies && c.tier!==1 ? ' <button class="rowedit" id="scPromote">Set to Tier 1</button>' : '');
+  return '<div class="scard"><div class="hd"><b>Tier 1 scorecard</b>'
+    +'<span class="screq">3 of 5 pluses = Tier 1</span></div>'
+    +rows+'<div class="scsum">'+verdict
+    +(c.sc_updated_at?'<div class="hint" style="margin-top:5px">Scored '+new Date(c.sc_updated_at).toLocaleDateString()+(c.sc_updated_by?' by '+esc(c.sc_updated_by):'')+'</div>':'')
+    +'</div></div>';
 }
 function viewForm(c,accts){
   const money=v=>v?('$'+Number(v).toLocaleString()):'—';
@@ -678,19 +745,15 @@ function viewForm(c,accts){
     +'<button class="rowedit" id="buildSum">Build summary</button></div>'+summaryHtml(c)
     +(c.summary_updated_at?'<div class="hint" style="margin-top:8px">Updated '+new Date(c.summary_updated_at).toLocaleDateString()+' · drafted from firm records, review before client use.</div>':'')
     +'</div>'
+   +scoreCard(c)
    +'<div class="sect">Details</div><div class="fieldgrid">'
    +f('Greeting','Hi '+esc(c.greeting||'there'))
    +f('Email','<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>')
-   +f('Phone',esc(c.phone||'—'))
-   +f('Location',esc([c.city,c.state].filter(Boolean).join(', ')||'—'))
-   +f('Industry',esc(c.industry||'—'))
-   +f('Annual fees',money(c.annual_fees))
-   +f('Revenue',esc(c.revenue||'—'))
-   +f('Client since',esc(c.client_since||'—'))
-   +f('Referral source',esc(c.referral_source||'—'))
-   +f('Relationship owner',esc(c.owner||'—'))
-   +f('Birthday',esc(c.birthday||'—'))
-   +f('Relationship group',esc(c.relationship_group||'—'))
+   +ff('Phone',c.phone)+ff('Location',[c.city,c.state].filter(Boolean).join(', '))
+   +ff('Industry',c.industry)+ff('Annual fees',c.annual_fees?money(c.annual_fees):'')
+   +ff('Revenue',c.revenue)+ff('Client since',c.client_since)
+   +ff('Referral source',c.referral_source)+ff('Relationship owner',c.owner)
+   +ff('Birthday',c.birthday)+ff('Relationship group',c.relationship_group)
    +'</div>'
    +(c.key_people?'<div class="sect">Key people</div><div style="font-size:13.5px;white-space:pre-wrap">'+esc(c.key_people)+'</div>':'')
    +(c.household_size>1?'<div class="sect">Household</div><div class="hint">'+esc(c.household_names)+'</div>':'')
@@ -782,6 +845,7 @@ function buildSummary(){
   if(el){ el.value=draft; }
   else { S.rec.summary=draft; sb.from('clients').update({summary:draft,summary_updated_at:new Date().toISOString()}).eq('email',c.email).then(()=>{ S.rec.summary_updated_at=new Date().toISOString(); drawRec(); }); }
 }
+const ff=(l,v)=>((v===null||v===undefined||String(v).trim()==='')?'':f(l,esc(String(v))));
 const f=(l,v)=>'<div class="f"><div class="l">'+l+'</div><div class="v">'+v+'</div></div>';
 function closeRec(){ $('drawer').classList.remove('show'); $('ov').classList.remove('show'); }
 $('ov').onclick=closeRec;
