@@ -55,6 +55,13 @@ h1.page{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:25px;marg
 .psub{color:var(--muted);font-size:13.5px;margin:0 0 18px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
 .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kpi[data-go]{cursor:pointer;transition:.14s}
+.kpi[data-go]:hover{border-color:var(--gold);box-shadow:0 3px 12px rgba(19,43,73,.08);transform:translateY(-1px)}
+.bar[data-go]{cursor:pointer}
+.bar[data-go]:hover{background:#faf7ef}
+.fchip{display:inline-flex;align-items:center;gap:8px;background:#132b49;color:#fff;border-radius:20px;padding:5px 8px 5px 14px;font-size:12.5px;font-weight:600}
+.fchip button{background:rgba(255,255,255,.18);border:none;color:#fff;width:19px;height:19px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1}
+
 .kpi .n{font-family:'Fraunces',Georgia,serif;font-size:26px;color:var(--navy);line-height:1.1}
 .kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-top:4px}
 .panel{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:18px;overflow:hidden}
@@ -328,23 +335,31 @@ function viewDash(){
   const max=Math.max(...byTier.map(x=>x.n),1);
   const target={1:20,2:60,3:20};
   const bars=byTier.map(x=>{const pct=a.length?Math.round(100*x.n/a.length):0;
-    return '<div class="bar"><div class="lab">Tier '+x.t+'</div><div class="track"><div class="fill" style="width:'+(100*x.n/max)+'%"></div></div><div class="val">'+x.n+' · '+pct+'% <span class="hint">(goal '+target[x.t]+'%)</span></div></div>';}).join('');
+    return '<div class="bar" data-go="tier:'+x.t+'"><div class="lab">Tier '+x.t+'</div><div class="track"><div class="fill" style="width:'+(100*x.n/max)+'%"></div></div><div class="val">'+x.n+' · '+pct+'% <span class="hint">(goal '+target[x.t]+'%)</span></div></div>';}).join('');
   const multi=a.filter(c=>c.account_count>1).length;
   const deep=a.filter(c=>c.account_count>=5).sort((x,y)=>y.account_count-x.account_count).slice(0,8);
   const deepRows=deep.map(c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'</b>'+(c.relationship_group?' <span class="badge">'+esc(c.relationship_group)+'</span>':'')+'</td><td>'+tierBadge(c.tier)+'</td><td style="text-align:right">'+c.account_count+' accounts</td></tr>').join('');
   const review=CLIENTS.filter(c=>c.status==='review').length;
   return '<p class="psub">'+a.length+' active clients.</p>'
    +'<div class="kpis">'
-   +kpi(a.length,'Active clients')+kpi(a.filter(c=>c.tier===1).length,'Tier 1')
-   +kpi(multi,'Multi-entity clients')+kpi(CLIENTS.filter(c=>c.household_size>1).length,'Shared households')
-   +kpi(review,'Awaiting review')+'</div>'
+   +kpi(a.length,'Active clients','all')+kpi(a.filter(c=>c.tier===1).length,'Tier 1','tier:1')
+   +kpi(multi,'Multi-entity clients','multi')+kpi(a.filter(c=>c.household_size>1).length,'Shared households','household')
+   +kpi(review,'Awaiting review','review')+'</div>'
    +'<div class="panel"><div class="ph"><h3>Book by tier</h3><span class="hint">vs 20 / 60 / 20 target</span></div>'+bars+'<div style="height:8px"></div></div>'
    +'<div class="panel"><div class="ph"><h3>Deepest relationships</h3><span class="hint">by entity count</span></div><table><tbody>'+deepRows+'</tbody></table></div>';
 }
-const kpi=(n,l)=>'<div class="kpi"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>';
+const kpi=(n,l,go)=>'<div class="kpi"'+(go?' data-go="'+go+'"':'')+'><div class="n">'+n+'</div><div class="l">'+l+'</div></div>';
 
+const FILTERS={all:['All active clients',c=>true],
+  multi:['Clients with 2+ entities',c=>c.account_count>1],
+  household:['Shared-email households',c=>c.household_size>1],
+  review:['Awaiting review',c=>true]};
+function baseList(){
+  return S.cfilter==='review' ? CLIENTS.filter(c=>c.status==='review') : active();
+}
 function viewClients(){
-  let list=active();
+  let list=baseList();
+  if(S.cfilter && FILTERS[S.cfilter]) list=list.filter(FILTERS[S.cfilter][1]);
   if(S.tier) list=list.filter(c=>String(c.tier)===S.tier);
   if(S.q){const q=S.q.toLowerCase();
     list=list.filter(c=>[c.contact_name,c.email,c.company,c.accounts,c.city,c.relationship_group].some(v=>(v||'').toLowerCase().includes(q)));}
@@ -360,7 +375,9 @@ function viewClients(){
     }).join('');
   } else body=list.map(rowHtml).join('');
   if(!body) body='<tr><td colspan="6"><div class="empty">No clients match.</div></td></tr>';
-  return '<p class="psub">'+list.length+' shown · click any row to open the record.</p>'
+  const chipTxt = S.cfilter && FILTERS[S.cfilter] ? FILTERS[S.cfilter][0] : '';
+  const chip = chipTxt ? '<span class="fchip">'+esc(chipTxt)+'<button id="clearF" title="Clear filter">×</button></span> ' : '';
+  return '<p class="psub">'+chip+list.length+' shown · click any row to open the record.</p>'
    +'<div class="panel"><div class="toolbar"><input type="search" id="q" class="grow" placeholder="Search name, company, entity, city…" value="'+esc(S.q)+'">'
    +pills
    +'<span class="pill '+(S.group==='family'?'on':'')+'" data-g="'+(S.group==='family'?'flat':'family')+'">'+(S.group==='family'?'Grouped':'Group by relationship')+'</span></div>'
@@ -690,7 +707,15 @@ $('ov').onclick=closeRec;
 
 function bind(){
   const q=$('q'); if(q) q.oninput=()=>{S.q=q.value; const p=document.activeElement===q; render(); if(p){const n=$('q'); n.focus(); n.setSelectionRange(n.value.length,n.value.length);} };
-  document.querySelectorAll('[data-t]').forEach(el=>el.onclick=()=>{S.tier=el.dataset.t;render();});
+  document.querySelectorAll('[data-t]').forEach(el=>el.onclick=()=>{S.tier=el.dataset.t; if(S.cfilter==='review'){} render();});
+  document.querySelectorAll('[data-go]').forEach(el=>el.onclick=()=>{
+    const g=el.dataset.go;
+    if(g.startsWith('tier:')){ S.cfilter=null; S.tier=g.split(':')[1]; }
+    else if(g==='all'){ S.cfilter=null; S.tier=''; }
+    else { S.cfilter=g; S.tier=''; }
+    S.q=''; S.view='clients'; renderTabs(); render(); window.scrollTo(0,0);
+  });
+  const cf=$('clearF'); if(cf) cf.onclick=(ev)=>{ev.stopPropagation(); S.cfilter=null; render();};
   document.querySelectorAll('[data-g]').forEach(el=>el.onclick=()=>{S.group=el.dataset.g;render();});
   document.querySelectorAll('tr[data-em]').forEach(tr=>tr.onclick=()=>openRec(tr.dataset.em));
   document.querySelectorAll('[data-qt]').forEach(sel=>sel.onchange=async()=>{
