@@ -432,12 +432,11 @@ td{padding:11px 18px;font-size:13.5px}
 .bar{padding:10px 18px}
 .toolbar{padding:13px 18px}
 
-/* side-by-side panels on wide screens */
+/* side-by-side panels on wide screens — dashboard only; other views stay full width */
 @media(min-width:1280px){
-  .content{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-content:start}
-  .content > .psub,.content > .kpis{grid-column:1 / -1}
-  .content > .panel{margin-bottom:0}
-  .content > .panel:nth-of-type(1){grid-column:1 / -1}   /* book by tier full width */
+  .content.v-dashboard{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-content:start}
+  .content.v-dashboard > .psub,.content.v-dashboard > .kpis{grid-column:1 / -1}
+  .content.v-dashboard > .panel{margin-bottom:0}
 }
 
 /* clearer separation between rail and canvas */
@@ -447,10 +446,8 @@ td{padding:11px 18px;font-size:13.5px}
 /* ============ PANEL HEIGHT / DENSITY ============ */
 @media(min-width:1280px){
   /* panels size to their own content instead of stretching to the row */
-  .content{align-items:start}
-  .content > .panel{align-self:start}
-  /* let Book by tier share the row rather than span it */
-  .content > .panel:nth-of-type(1){grid-column:auto}
+  .content.v-dashboard{align-items:start}
+  .content.v-dashboard > .panel{align-self:start}
 }
 /* tier bars sit closer together so the panel isn't tall and empty */
 .bar{padding:9px 18px}
@@ -458,6 +455,8 @@ td{padding:11px 18px;font-size:13.5px}
 .bar .val{width:auto;white-space:nowrap;font-size:12px;text-align:right;min-width:150px}
 .bar .track{height:9px}
 .gap{color:#e9a33a;font-weight:600;font-size:11.5px;letter-spacing:.02em}
+.qtier.untiered{color:#8296b3!important;font-style:italic}
+td{vertical-align:middle}
 .bar.clk{cursor:pointer}
 .bar.clk:hover{background:rgba(209,175,68,.09)}
 .bar.clk .fill{background:linear-gradient(90deg,#e9a33a,#f0c368)}
@@ -660,6 +659,7 @@ function renderTabs(){
 
 /* ---------- views ---------- */
 function render(){
+  $('app').className='content v-'+S.view;
   $('app').innerHTML = S.view==='dashboard'?viewDash() : S.view==='clients'?viewClients() : S.view==='connectors'?viewConnectors() : viewEmail();
   bind();
 }
@@ -804,7 +804,8 @@ const rowHtml=c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'<
   +(c.household_size>1?' <span class="badge">+'+(c.household_size-1)+'</span>':'')
   +(c.is_principal?' <span class="tb t1">Principal</span>':'')
   +(c.company?'<div class="hint">'+esc(c.company)+'</div>':'')+'</td>'
-  +'<td><select class="qtier" data-qt="'+esc(c.email)+'" onclick="event.stopPropagation()">'
+  +'<td><select class="qtier'+(c.tier?'':' untiered')+'" data-qt="'+esc(c.email)+'" onclick="event.stopPropagation()">'
+  +(c.tier?'':'<option value="" selected>Not tiered</option>')
   +[1,2,3].map(n=>'<option value="'+n+'"'+(c.tier===n?' selected':'')+'>Tier '+n+'</option>').join('')+'</select></td>'
   +'<td>'+(c.account_count||0)+'</td><td>'+esc(c.city||'')+'</td>'
   +'<td class="hint">'+(c.status==='needs_email'?'<span class="gap">no email on file</span>':esc(c.email))+'</td>'
@@ -1187,7 +1188,8 @@ function bind(){
   document.querySelectorAll('[data-g]').forEach(el=>el.onclick=()=>{S.group=el.dataset.g;render();});
   document.querySelectorAll('tr[data-em]').forEach(tr=>tr.onclick=()=>openRec(tr.dataset.em));
   document.querySelectorAll('[data-qt]').forEach(sel=>sel.onchange=async()=>{
-    const em=sel.dataset.qt, tier=Number(sel.value);
+    const em=sel.dataset.qt, tier=sel.value?Number(sel.value):null;
+    if(tier===null) return;
     sel.disabled=true;
     const {error}=await sb.from('clients').update({tier:tier,updated_at:new Date().toISOString()}).eq('email',em);
     if(error){ alert('Could not update tier: '+error.message); }

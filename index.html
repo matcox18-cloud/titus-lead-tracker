@@ -546,6 +546,12 @@ select option{background:#0d1e3a;color:#eaf0f8}
 .roster-del{color:#8ea3bf}
 .roster-del:hover{color:var(--danger);border-color:rgba(255,135,121,.4);background:rgba(255,135,121,.12)}
 
+/* ---- native controls follow the dark theme (date pickers, scrollbars) ---- */
+:root{color-scheme:dark}
+/* the touch/clock icon has no intrinsic size — constrain it or it renders at 24px */
+.touch svg{width:13px;height:13px;flex-shrink:0}
+.touch{white-space:nowrap}
+
 /* ---- rescue inline light-mode colors used in the Guide + modals ---- */
 [style*="color:#3f4751"],[style*="color:#54627a"]{color:#c3d3ea!important}
 [style*="color:#9aa6b4"],[style*="color:#7e93ab"]{color:#8296b3!important}
