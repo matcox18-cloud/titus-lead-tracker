@@ -546,6 +546,10 @@ select option{background:#0d1e3a;color:#eaf0f8}
 .roster-del{color:#8ea3bf}
 .roster-del:hover{color:var(--danger);border-color:rgba(255,135,121,.4);background:rgba(255,135,121,.12)}
 
+/* ---- three-way section switcher fits the rail ---- */
+.secsw.three{margin:14px 10px 4px}
+.secsw.three a{font-size:10.5px;padding:6px 6px;letter-spacing:-.01em}
+
 /* ---- native controls follow the dark theme (date pickers, scrollbars) ---- */
 :root{color-scheme:dark}
 /* the touch/clock icon has no intrinsic size — constrain it or it renders at 24px */
@@ -602,7 +606,7 @@ select option{background:#0d1e3a;color:#eaf0f8}
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="brand" id="brandLogo"></div>
-    <div class="secsw"><a href="index.html" class="on">Groundwork</a><a href="legacy.html">Legacy Builder</a></div>
+    <div class="secsw three"><a href="index.html" class="on">Groundwork</a><a href="legacy.html">Legacy Builder</a><a href="time.html">Time &amp; Billing</a></div>
     <nav class="nav" id="navMenu">
       <div class="nav-label">Sales</div>
     </nav>
