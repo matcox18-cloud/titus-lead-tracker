@@ -300,6 +300,20 @@ tbody tr:last-child td{border-bottom:none}
 .roster-del{background:none;border:1px solid transparent;color:var(--muted);border-radius:8px;padding:6px;cursor:pointer;display:flex}
 .roster-del:hover{color:var(--danger);border-color:#f0d3d0;background:#fdf5f4}
 
+/* ---- hub cluster switcher (base) ---- */
+.hubven{display:flex;justify-content:center;margin:14px 0 4px}
+.hubven a{width:42px;height:42px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:800;letter-spacing:.02em;text-decoration:none;color:#c6d2e2;position:relative;
+  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.25);transition:.15s}
+.hubven a+a{margin-left:-9px}
+.hubven a:hover{background:rgba(255,255,255,.22);color:#fff;z-index:3;transform:translateY(-1px)}
+.hubven a.on{background:linear-gradient(135deg,#f0dc9c,#e2c25f);color:#08172c;z-index:2;border-color:transparent;
+  box-shadow:0 4px 16px rgba(226,194,95,.35), inset 0 1px 0 rgba(255,255,255,.45)}
+/* ---- theme toggle (base/light) ---- */
+#thmBtn{position:fixed;top:16px;right:64px;z-index:1200;width:34px;height:34px;border-radius:50%;
+  border:1px solid rgba(19,43,73,.25);background:#fff;color:#132b49;font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+</style><style data-wave>
 /* ================= WAVE / GLASS THEME (Groundwork) ================= */
 :root{
   --navy:#0a1b36; --navy-700:#12294a; --navy-600:#1a3a63;
@@ -577,6 +591,8 @@ select option{background:#0d1e3a;color:#eaf0f8}
   .bn-add .plus{background:linear-gradient(135deg,var(--gold-soft),var(--gold));color:#08172c;
     box-shadow:0 8px 24px rgba(226,194,95,.4)}
 }
+/* dark-theme skin for theme toggle */
+#thmBtn{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.28);color:#f0dc9c}
 </style>
 </head>
 <body>
@@ -606,7 +622,7 @@ select option{background:#0d1e3a;color:#eaf0f8}
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="brand" id="brandLogo"></div>
-    <div class="secsw three"><a href="index.html" class="on">Groundwork</a><a href="legacy.html">Legacy Builder</a><a href="time.html">Time &amp; Billing</a></div>
+    <div class="hubven"><a href="index.html" class="on" title="Groundwork">GW</a><a href="legacy.html" title="Legacy Builder">LB</a><a href="time.html" title="Time &amp; Billing">T&amp;B</a></div>
     <nav class="nav" id="navMenu">
       <div class="nav-label">Sales</div>
     </nav>
@@ -1854,6 +1870,21 @@ function subscribeRealtime(){
     }).subscribe();
   }catch(e){ console.error('realtime', e); }
 }
+</script>
+<button id="thmBtn" title="Toggle light / dark mode" aria-label="Toggle theme">☀</button>
+<script>
+(function(){
+  var KEY='hubTheme';
+  function cur(){ try{ return localStorage.getItem(KEY)||'dark'; }catch(e){ return 'dark'; } }
+  function apply(t){
+    document.querySelectorAll('style[data-wave]').forEach(function(s){ s.disabled=(t==='light'); });
+    document.documentElement.setAttribute('data-hubtheme',t);
+    var b=document.getElementById('thmBtn'); if(b) b.textContent=(t==='light'?'☾':'☀');
+  }
+  var b=document.getElementById('thmBtn');
+  if(b) b.onclick=function(){ var t=(cur()==='light')?'dark':'light'; try{localStorage.setItem(KEY,t);}catch(e){} apply(t); };
+  apply(cur());
+})();
 </script>
 </body>
 </html>

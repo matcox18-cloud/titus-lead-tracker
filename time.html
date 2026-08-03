@@ -5576,22 +5576,116 @@ const _root = ReactDOM.createRoot(document.getElementById("root"));
 _root.render(/*#__PURE__*/React.createElement(Root, null));
 </script>
 
-<!-- Hub section switcher (matches Groundwork/Legacy Builder) -->
+<!-- Hub section switcher: cluster of 3, fixed at the TOP (matches Groundwork/Legacy Builder) -->
 <style>
-#hubsw{position:fixed;left:14px;bottom:14px;z-index:99999;display:flex;gap:2px;padding:3px;border-radius:22px;
-  background:rgba(10,24,48,.92);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);
-  box-shadow:0 10px 30px rgba(0,0,0,.35)}
-#hubsw a{display:inline-flex;align-items:center;padding:6px 12px;border-radius:20px;text-decoration:none;
-  font:700 12px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#c6d2e2;white-space:nowrap}
-#hubsw a:hover{color:#fff;background:rgba(255,255,255,.10)}
-#hubsw a.on{background:linear-gradient(135deg,#f0dc9c,#e2c25f);color:#08172c;
-  box-shadow:0 4px 16px rgba(226,194,95,.34)}
-@media print{#hubsw{display:none}}
+#hubclust{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:99999}
+.hubven{display:flex;justify-content:center}
+.hubven a{width:42px;height:42px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  font:800 10px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;letter-spacing:.02em;
+  text-decoration:none;color:#5c6b80;position:relative;background:rgba(19,43,73,.06);
+  border:1px solid rgba(19,43,73,.22);transition:.15s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.hubven a+a{margin-left:-9px}
+.hubven a:hover{background:rgba(19,43,73,.14);color:#132b49;z-index:3;transform:translateY(-1px)}
+.hubven a.on{background:linear-gradient(135deg,#f0dc9c,#e2c25f);color:#08172c;z-index:2;border-color:transparent;
+  box-shadow:0 4px 16px rgba(226,194,95,.35), inset 0 1px 0 rgba(255,255,255,.45)}
+#thmBtn{position:fixed;top:80px;right:16px;z-index:99999;width:34px;height:34px;border-radius:50%;
+  border:1px solid rgba(19,43,73,.25);background:#fff;color:#132b49;font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+@media print{#hubclust,#thmBtn{display:none}}
 </style>
-<div id="hubsw">
-  <a href="index.html">Groundwork</a>
-  <a href="legacy.html">Legacy Builder</a>
-  <a class="on" href="time.html">Time &amp; Billing</a>
+<style data-wave>
+/* ============ WAVE / GLASS THEME for Time & Billing (matches the Hub) ============ */
+@media screen{
+:root{color-scheme:dark;
+  --paper:#0a1b36;
+  --surface:rgba(16,34,66,.78); --surface-2:rgba(255,255,255,.06);
+  --ink:#eaf0f8; --muted:#8ea3bf; --faint:#6d86a8;
+  --line:rgba(255,255,255,.10); --line-strong:rgba(255,255,255,.22);
+  --gold-ink:#e2c25f;
+  --good:#7ee3b0; --good-bg:rgba(126,227,176,.13);
+  --warn:#e7d28a; --warn-bg:rgba(231,210,138,.13);
+  --bad:#ffa89c; --bad-bg:rgba(255,168,156,.13);
+  --bill:rgba(120,180,255,.10); --nonbill:rgba(255,255,255,.05);
+  --shadow:0 10px 32px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.tt-root{
+  background:
+    radial-gradient(1100px 620px at 78% -8%, rgba(64,142,255,.34), transparent 62%),
+    radial-gradient(900px 520px at 8% 105%, rgba(28,86,190,.30), transparent 60%),
+    linear-gradient(168deg,#061021 0%,#0a1b36 45%,#07152b 100%);
+  background-attachment:fixed;
+}
+.side{background:linear-gradient(180deg, rgba(10,24,48,.92), rgba(6,15,32,.96));
+  backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
+  border-right:1px solid rgba(255,255,255,.09);
+  box-shadow:1px 0 0 rgba(255,255,255,.05), 18px 0 60px rgba(0,0,0,.35)}
+.topbar{background:rgba(10,24,48,.55);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-bottom:1px solid rgba(255,255,255,.09)}
+.card,.grid-wrap{background:linear-gradient(160deg,rgba(255,255,255,.085),rgba(255,255,255,.04));
+  border-color:rgba(255,255,255,.12)}
+.modal{background:linear-gradient(160deg,#13264c,#0b1a36);border:1px solid rgba(255,255,255,.14)}
+.grid thead th{background:rgba(10,24,48,.92)}
+.grid tfoot td{background:rgba(255,255,255,.045)}
+.grid tbody tr:hover{background:rgba(255,255,255,.03)}
+.clickrow:hover td{background:rgba(255,255,255,.05)}
+.btn{background:rgba(255,255,255,.07)}
+.btn:hover{border-color:rgba(226,194,95,.6);background:rgba(255,255,255,.12)}
+.btn.primary{background:linear-gradient(135deg,#1c3a5e,#132b49);border-color:rgba(255,255,255,.18)}
+.btn.primary:hover{background:linear-gradient(135deg,#24476f,#17325a)}
+.btn.gold,.btn.gold:hover{background:linear-gradient(135deg,#e7d28a,#d1af44);color:#08172c;border-color:transparent}
+.iconbtn:hover{background:rgba(255,255,255,.10);color:#fff}
+.hin:focus,.cin:focus,.inv-in:focus{background:rgba(255,255,255,.10);border-color:rgba(226,194,95,.65);
+  box-shadow:0 0 0 3px rgba(209,175,68,.15);color:var(--ink)}
+.hin::placeholder{color:#44597e}
+.cin,.gsel{background-color:rgba(255,255,255,.05)}
+.gsel option,.whoami select option{background:#0d1e3a;color:#eaf0f8}
+.gsel:focus,.cin:focus{border-color:rgba(226,194,95,.65)}
+.seg-tab{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.18)}
+.seg-tab.on{background:linear-gradient(135deg,#e7d28a,#d1af44);color:#08172c;border-color:transparent}
+.rep-filter{background:rgba(255,255,255,.06);color:var(--ink);border-color:rgba(255,255,255,.2)}
+.timer-chip{background:rgba(255,255,255,.07)}
+.wk-nav{background:rgba(255,255,255,.06)}
+.wk-nav button{color:var(--ink)}
+.wk-nav button:hover{background:rgba(255,255,255,.10)}
+.rolehint{background:rgba(255,255,255,.06)} .rolehint b{color:#e7d28a}
+.recent-chip{background:rgba(255,255,255,.07)}
+.recent-chip:hover{background:rgba(255,255,255,.12);border-color:rgba(226,194,95,.6)}
+.tog{background:rgba(255,255,255,.22)} .tog.on{background:#d1af44} .tog.on::after{background:#08172c}
+.meter{background:rgba(255,255,255,.12)} .meter>span{background:linear-gradient(90deg,#7fb2ff,#3f7de0)}
+.daycell.today{background:rgba(209,175,68,.10)}
+.grid thead th.day small{color:var(--ink)}
+.guide-card code{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15)}
+.allow-chip{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.2)}
+.allow-chip.on{background:#d1af44;color:#08172c;border-color:#d1af44}
+.csv-area{background:rgba(255,255,255,.05);color:var(--ink);border-color:rgba(255,255,255,.2)}
+input,select,textarea{color:var(--ink)}
+/* dark skins for cluster + toggle */
+.hubven a{color:#c6d2e2;background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.25)}
+.hubven a:hover{background:rgba(255,255,255,.22);color:#fff}
+#thmBtn{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.28);color:#f0dc9c}
+}
+</style>
+<div id="hubclust">
+  <div class="hubven">
+    <a href="index.html" title="Groundwork">GW</a>
+    <a href="legacy.html" title="Legacy Builder">LB</a>
+    <a class="on" href="time.html" title="Time &amp; Billing">T&amp;B</a>
+  </div>
 </div>
+<button id="thmBtn" title="Toggle light / dark mode" aria-label="Toggle theme">☀</button>
+<script>
+(function(){
+  var KEY='hubTheme';
+  function cur(){ try{ return localStorage.getItem(KEY)||'dark'; }catch(e){ return 'dark'; } }
+  function apply(t){
+    document.querySelectorAll('style[data-wave]').forEach(function(s){ s.disabled=(t==='light'); });
+    document.documentElement.setAttribute('data-hubtheme',t);
+    var b=document.getElementById('thmBtn'); if(b) b.textContent=(t==='light'?'☾':'☀');
+  }
+  var b=document.getElementById('thmBtn');
+  if(b) b.onclick=function(){ var t=(cur()==='light')?'dark':'light'; try{localStorage.setItem(KEY,t);}catch(e){} apply(t); };
+  apply(cur());
+})();
+</script>
 </body>
 </html>

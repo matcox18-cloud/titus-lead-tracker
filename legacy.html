@@ -184,6 +184,32 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);ba
 .wonrow input[type=checkbox]{width:17px;height:17px;accent-color:#132b49}
 @media(max-width:700px){.fieldgrid{grid-template-columns:1fr}.tabs button{padding:8px 9px;font-size:13px}}
 
+/* ---- hub cluster switcher (base) ---- */
+.hubven{display:flex;justify-content:center;margin:14px 0 4px}
+.hubven a{width:42px;height:42px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:800;letter-spacing:.02em;text-decoration:none;color:#c6d2e2;position:relative;
+  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.25);transition:.15s}
+.hubven a+a{margin-left:-9px}
+.hubven a:hover{background:rgba(255,255,255,.22);color:#fff;z-index:3;transform:translateY(-1px)}
+.hubven a.on{background:linear-gradient(135deg,#f0dc9c,#e2c25f);color:#08172c;z-index:2;border-color:transparent;
+  box-shadow:0 4px 16px rgba(226,194,95,.35), inset 0 1px 0 rgba(255,255,255,.45)}
+/* ---- theme toggle (base/light) ---- */
+#thmBtn{position:fixed;top:16px;right:64px;z-index:1200;width:34px;height:34px;border-radius:50%;
+  border:1px solid rgba(19,43,73,.25);background:#fff;color:#132b49;font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+/* ---- dashboard client search (base/light) ---- */
+.dsearch{position:relative;margin:0 0 14px;max-width:540px}
+.dsearch input{width:100%;box-sizing:border-box;padding:11px 14px;border-radius:12px;border:1px solid #d3d8e0;
+  font-size:14px;outline:none;background:#fff;color:#1a2230;font-family:inherit}
+.dsearch input:focus{border-color:#d1af44;box-shadow:0 0 0 3px rgba(209,175,68,.18)}
+.dsr{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:80;display:none;background:#fff;
+  border:1px solid #d3d8e0;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.28);overflow:hidden}
+.dsr.show{display:block}
+.dsr button{display:flex;width:100%;gap:10px;align-items:center;background:transparent;border:0;
+  padding:10px 14px;cursor:pointer;font-size:13.5px;color:#1a2230;text-align:left;font-family:inherit}
+.dsr button:hover{background:rgba(19,43,73,.06)}
+.dsr .sub{color:#6b7686;font-size:12px;margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
+</style><style data-wave>
 /* ============ WAVE / GLASS THEME ============ */
 :root{
   --ink:#eaf0f8; --muted:#8ea3bf; --line:rgba(255,255,255,.10);
@@ -463,11 +489,20 @@ td{vertical-align:middle}
 .bar.clk:hover{background:rgba(209,175,68,.09)}
 .bar.clk .fill{background:linear-gradient(90deg,#e9a33a,#f0c368)}
 
+/* dark-theme skins for hub extras */
+#thmBtn{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.28);color:#f0dc9c}
+.dsearch input{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);color:#eaf0f8}
+.dsearch input::placeholder{color:#8ea3bf}
+.dsearch input:focus{border-color:rgba(226,194,95,.65);box-shadow:0 0 0 3px rgba(226,194,95,.15)}
+.dsr{background:#0d1e3a;border-color:rgba(255,255,255,.14)}
+.dsr button{color:#eaf0f8}
+.dsr button:hover{background:rgba(255,255,255,.08)}
+.dsr .sub{color:#8ea3bf}
 </style></head>
 <body>
 <aside class="sidebar">
   <div class="brand"><img id="brand" alt="Titus CPAs"></div>
-  <div class="secsw three"><a href="index.html">Groundwork</a><a href="legacy.html" class="on">Legacy Builder</a><a href="time.html">Time &amp; Billing</a></div>
+  <div class="hubven"><a href="index.html" title="Groundwork">GW</a><a href="legacy.html" class="on" title="Legacy Builder">LB</a><a href="time.html" title="Time &amp; Billing">T&amp;B</a></div>
   <nav class="nav" id="nav"></nav>
   <div class="nav-foot">
     <div class="tagline">"We bring the structure.<br>You build the legacy."</div>
@@ -715,7 +750,8 @@ function viewDash(){
         +'<td style="text-align:right" class="hint">'+(Number(x.fin.wip_value)>0?money(x.fin.wip_value)+' WIP':'')+'</td></tr>').join('');
     if(top) feePanel='<div class="panel"><div class="ph"><h3>Top clients by fees</h3><span class="hint">last 12 months · from Time &amp; Billing</span></div><table><tbody>'+top+'</tbody></table></div>';
   }
-  return '<p class="psub">'+a.length+' active clients · <b>'+(a.length-ne)+'</b> can be emailed'
+  return '<div class="dsearch"><input id="dashQ" type="search" placeholder="Search clients — name, company, entity, email…" autocomplete="off"><div id="dashQR" class="dsr"></div></div>'
+   +'<p class="psub">'+a.length+' active clients · <b>'+(a.length-ne)+'</b> can be emailed'
    +(ne?', <span class="gap">'+ne+' have no address on file</span>':'')+'.</p>'
    +'<div class="kpis">'
    +kpi(a.length,'Active clients','all')+kpi(a.length-ne,'Can be emailed','all')
@@ -1267,6 +1303,27 @@ function bind(){
   const cf=$('clearF'); if(cf) cf.onclick=(ev)=>{ev.stopPropagation(); S.cfilter=null; render();};
   document.querySelectorAll('[data-g]').forEach(el=>el.onclick=()=>{S.group=el.dataset.g;render();});
   document.querySelectorAll('tr[data-em]').forEach(tr=>tr.onclick=()=>openRec(tr.dataset.em));
+  const dq=$('dashQ');
+  if(dq){
+    const RES=$('dashQR');
+    const run=()=>{
+      const q=dq.value.trim().toLowerCase();
+      if(!q){RES.classList.remove('show');RES.innerHTML='';return;}
+      const hits=CLIENTS.filter(c=>[c.contact_name,c.company,c.relationship_group,c.email,c.accounts,c.household_names]
+        .some(v=>String(v||'').toLowerCase().includes(q))).slice(0,8);
+      RES.innerHTML=hits.length
+        ? hits.map(c=>'<button data-dse="'+esc(c.email)+'"><b>'+esc(c.contact_name||c.email)+'</b>'
+            +(c.tier?tierBadge(c.tier):'')
+            +'<span class="sub">'+esc(c.company||c.relationship_group||c.status||'')+'</span></button>').join('')
+        : '<button disabled style="cursor:default"><span class="sub">No matches</span></button>';
+      RES.classList.add('show');
+      RES.querySelectorAll('[data-dse]').forEach(b=>b.onclick=()=>{RES.classList.remove('show');dq.value='';openRec(b.dataset.dse);});
+    };
+    dq.oninput=run;
+    dq.onkeydown=e=>{ if(e.key==='Enter'){ const f=RES.querySelector('[data-dse]'); if(f) f.click(); }
+                      if(e.key==='Escape'){ RES.classList.remove('show'); dq.blur(); } };
+    dq.onfocus=run;
+  }
   document.querySelectorAll('[data-qt]').forEach(sel=>sel.onchange=async()=>{
     const em=sel.dataset.qt, tier=sel.value?Number(sel.value):null;
     if(tier===null) return;
@@ -1316,4 +1373,19 @@ function bind(){
   };
 }
 init();
+</script>
+<button id="thmBtn" title="Toggle light / dark mode" aria-label="Toggle theme">☀</button>
+<script>
+(function(){
+  var KEY='hubTheme';
+  function cur(){ try{ return localStorage.getItem(KEY)||'dark'; }catch(e){ return 'dark'; } }
+  function apply(t){
+    document.querySelectorAll('style[data-wave]').forEach(function(s){ s.disabled=(t==='light'); });
+    document.documentElement.setAttribute('data-hubtheme',t);
+    var b=document.getElementById('thmBtn'); if(b) b.textContent=(t==='light'?'☾':'☀');
+  }
+  var b=document.getElementById('thmBtn');
+  if(b) b.onclick=function(){ var t=(cur()==='light')?'dark':'light'; try{localStorage.setItem(KEY,t);}catch(e){} apply(t); };
+  apply(cur());
+})();
 </script></body></html>
