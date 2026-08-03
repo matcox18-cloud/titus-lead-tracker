@@ -1409,9 +1409,22 @@ function engToRow(e) {
     ready_to_invoice: !!e.readyToInvoice
   };
 }
+async function fetchAll(table, orderCol) {
+  // Supabase caps selects at 1000 rows; page through everything.
+  const PAGE = 1000, rows = [];
+  for (let from = 0;; from += PAGE) {
+    let q = sb.from(table).select('*');
+    if (orderCol) q = q.order(orderCol);
+    q = q.order('id').range(from, from + PAGE - 1);
+    const { data, error } = await q;
+    if (error) return { data: rows, error };
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE) return { data: rows, error: null };
+  }
+}
 async function loadData() {
   if (!CLOUD) return null;
-  const [staffR, clientsR, servicesR, engR, invR, teR, setR] = await Promise.all([sb.from('staff').select('*').order('name'), sb.from('tb_clients').select('*').order('name'), sb.from('services').select('*'), sb.from('engagements').select('*'), sb.from('invoices').select('*'), sb.from('time_entries').select('*'), sb.from('firm_settings').select('*').eq('id', 'default').maybeSingle()]);
+  const [staffR, clientsR, servicesR, engR, invR, teR, setR] = await Promise.all([fetchAll('staff', 'name'), fetchAll('tb_clients', 'name'), fetchAll('services'), fetchAll('engagements'), fetchAll('invoices'), fetchAll('time_entries'), sb.from('firm_settings').select('*').eq('id', 'default').maybeSingle()]);
   const err = staffR.error || clientsR.error || servicesR.error || engR.error || invR.error || teR.error;
   if (err) console.error('loadData', err);
   const staff = (staffR.data || []).map(s => ({
