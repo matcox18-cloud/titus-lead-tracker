@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Titus — Data Staging</title>
+<style>
+:root{--gold:#e2c25f;--gold-soft:#f0dc9c;--ink:#eaf0f8;--muted:#8ea3bf}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:var(--ink);min-height:100vh;
+ background:radial-gradient(1100px 620px at 78% -8%, rgba(64,142,255,.34), transparent 62%),
+ linear-gradient(168deg,#061021 0%,#0a1b36 45%,#07152b 100%);display:flex;align-items:center;justify-content:center;padding:24px}
+.card{width:520px;max-width:100%;background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.05));
+ border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:28px;backdrop-filter:blur(24px);
+ box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.2)}
+h1{font-size:20px;font-weight:700;margin-bottom:4px}
+p.sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+label{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);
+ background:rgba(255,255,255,.06);color:var(--ink);font-size:14px}
+input:focus,select:focus{outline:none;border-color:rgba(226,194,95,.65)}
+select option{background:#0d1e3a}
+button{width:100%;margin-top:18px;padding:12px;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;
+ background:linear-gradient(135deg,var(--gold-soft),var(--gold));color:#08172c}
+button:disabled{opacity:.5;cursor:default}
+#log{margin-top:16px;font-size:12.5px;line-height:1.6;color:var(--muted);white-space:pre-wrap;max-height:220px;overflow:auto}
+#log b{color:#7ee3b0}
+#log .err{color:#ffa89c}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Data Staging</h1>
+  <p class="sub">Loads a CSV export into the staging area for the Time &amp; Billing refresh. Team use only.</p>
+  <label>Team PIN</label>
+  <input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
+  <label>Dataset</label>
+  <select id="ds">
+    <option value="td_time">TaxDome time entries</option>
+    <option value="td_bills">TaxDome invoices (bills)</option>
+    <option value="pcs_inv">Practice CS invoice journal</option>
+  </select>
+  <label>CSV file</label>
+  <input id="f" type="file" accept=".csv,text/csv">
+  <button id="go">Upload to staging</button>
+  <div id="log"></div>
+</div>
+<script>
+const FN='https://mxvxmpprqgwkujsceybk.supabase.co/functions/v1/stage-load';
+const log=(m,cls)=>{const d=document.getElementById('log');d.innerHTML+=(cls?'<span class="'+cls+'">':'')+m+(cls?'</span>':'')+'\n';d.scrollTop=d.scrollHeight;};
+
+// Proper CSV parser: quoted fields, embedded commas/newlines, doubled quotes.
+function parseCSV(text){
+  const rows=[];let row=[],field='',inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){
+      if(c==='"'){ if(text[i+1]==='"'){field+='"';i++;} else inQ=false; }
+      else field+=c;
+    }else{
+      if(c==='"') inQ=true;
+      else if(c===','){row.push(field);field='';}
+      else if(c==='\n'){row.push(field);field='';if(row.length>1||row[0]!=='')rows.push(row);row=[];}
+      else if(c==='\r'){/* skip */}
+      else field+=c;
+    }
+  }
+  if(field!==''||row.length){row.push(field);if(row.length>1||row[0]!=='')rows.push(row);}
+  return rows;
+}
+
+document.getElementById('go').onclick=async()=>{
+  const btn=document.getElementById('go');
+  const pin=document.getElementById('pin').value.trim();
+  const ds=document.getElementById('ds').value;
+  const file=document.getElementById('f').files[0];
+  if(!pin){log('Enter the PIN.','err');return;}
+  if(!file){log('Choose a CSV file.','err');return;}
+  btn.disabled=true;
+  try{
+    log('Reading '+file.name+' ('+Math.round(file.size/1024)+' KB)…');
+    const text=await file.text();
+    const rows=parseCSV(text);
+    // Practice CS export has 6 junk banner lines and a two-line header; detect header row generically:
+    // use the first row that has >1 non-empty cell containing a known key, else row 0.
+    let hi=0;
+    if(ds==='pcs_inv'){
+      for(let i=0;i<Math.min(rows.length,12);i++){ if((rows[i][0]||'').trim()==='Number'){hi=i;break;} }
+      // PCS header is split across two lines; build a fixed header instead:
+      var header=['number','reference','date','client_id','c4','c5','client_name','c7','time_amt','expenses','net_progress','surcharge','c12','discount','sales_tax','service_tax','invoice_amount'];
+      var dataRows=rows.slice(hi+1).filter(r=>/^\d{3,7}$/.test((r[0]||'').trim()));
+    }else{
+      var header=rows[0].map(h=>h.trim());
+      var dataRows=rows.slice(1).filter(r=>r.some(c=>(c||'').trim()!==''));
+    }
+    log('Parsed '+dataRows.length+' data rows. Uploading…');
+    const B=400;let sent=0,total=0;
+    for(let i=0;i<dataRows.length;i+=B){
+      const batch=dataRows.slice(i,i+B).map(r=>{const o={};header.forEach((h,j)=>{if(h)o[h]=r[j]??'';});return o;});
+      const res=await fetch(FN,{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({pin,dataset:ds,rows:batch,reset:i===0})});
+      const j=await res.json();
+      if(!res.ok||j.error){log('Batch failed: '+(j.error||res.status)+(j.detail?' — '+j.detail:''),'err');btn.disabled=false;return;}
+      sent+=batch.length;total=j.total;
+      log('  '+sent+' / '+dataRows.length+' uploaded');
+    }
+    log('<b>Done. '+total+' rows staged as '+ds+'.</b>');
+  }catch(e){log('Error: '+e.message,'err');}
+  btn.disabled=false;
+};
+</script>
+</body>
+</html>
