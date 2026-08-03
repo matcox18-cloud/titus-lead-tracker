@@ -568,7 +568,20 @@ async function load(){
   if(error){ $('app').innerHTML='<div class="empty">Could not load clients: '+error.message+'</div>'; return; }
   CLIENTS=data||[];
   $('cnt').textContent=active().length+' active clients';
+  loadFin(); // fees/WIP rollup from Time & Billing (non-blocking)
 }
+/* Fees & WIP per contact, aggregated server-side from the Time & Billing tables. */
+let FIN={};
+async function loadFin(){
+  try{
+    const {data,error}=await sb.rpc('legacy_client_financials');
+    if(error) throw error;
+    FIN={}; (data||[]).forEach(r=>{ FIN[String(r.email||'').toLowerCase()]=r; });
+    if(S.view==='dashboard') render();          // refresh KPIs once figures arrive
+    if(S.rec && !S.editing) drawRec();          // refresh open record
+  }catch(e){ console.error('loadFin',e); }
+}
+const finFor=c=>FIN[String((c&&c.email)||'').toLowerCase()]||null;
 const active=()=>CLIENTS.filter(c=>c.status==='active');
 // Clients with no real email are stored on a synthetic key. They ARE active clients
 // (they count in the book) but can never be mailed.
@@ -685,14 +698,33 @@ function viewDash(){
   const deepRows=deep.map(c=>'<tr data-em="'+esc(c.email)+'"><td><b>'+esc(c.contact_name)+'</b>'+(c.relationship_group?' <span class="badge">'+esc(c.relationship_group)+'</span>':'')+'</td><td>'+tierBadge(c.tier)+'</td><td style="text-align:right">'+c.account_count+' accounts</td></tr>').join('');
   const review=CLIENTS.filter(c=>c.status==='review').length;
   const ne=noEmail().length;
+  // Fees & WIP rollup (loaded async; panel appears once figures arrive)
+  const finLoaded=Object.keys(FIN).length>0;
+  let feeKpis='', feePanel='';
+  if(finLoaded){
+    const withFin=a.map(c=>({c,fin:finFor(c)})).filter(x=>x.fin);
+    const ltm=withFin.reduce((s,x)=>s+Number(x.fin.invoiced_ltm||0),0);
+    const wip=withFin.reduce((s,x)=>s+Number(x.fin.wip_value||0),0);
+    feeKpis=kpi(money(ltm),'Fees · last 12 mo')+kpi(money(wip),'Unbilled WIP');
+    const top=withFin.filter(x=>Number(x.fin.invoiced_ltm)>0)
+      .sort((x,y)=>y.fin.invoiced_ltm-x.fin.invoiced_ltm).slice(0,8)
+      .map(x=>'<tr data-em="'+esc(x.c.email)+'"><td><b>'+esc(x.c.contact_name)+'</b>'
+        +(x.c.relationship_group?' <span class="badge">'+esc(x.c.relationship_group)+'</span>':'')+'</td>'
+        +'<td>'+tierBadge(x.c.tier)+'</td>'
+        +'<td style="text-align:right"><b>'+money(x.fin.invoiced_ltm)+'</b></td>'
+        +'<td style="text-align:right" class="hint">'+(Number(x.fin.wip_value)>0?money(x.fin.wip_value)+' WIP':'')+'</td></tr>').join('');
+    if(top) feePanel='<div class="panel"><div class="ph"><h3>Top clients by fees</h3><span class="hint">last 12 months · from Time &amp; Billing</span></div><table><tbody>'+top+'</tbody></table></div>';
+  }
   return '<p class="psub">'+a.length+' active clients · <b>'+(a.length-ne)+'</b> can be emailed'
    +(ne?', <span class="gap">'+ne+' have no address on file</span>':'')+'.</p>'
    +'<div class="kpis">'
    +kpi(a.length,'Active clients','all')+kpi(a.length-ne,'Can be emailed','all')
    +kpi(a.filter(c=>c.tier===1).length,'Tier 1','tier:1')
+   +feeKpis
    +kpi(multi,'Multi-entity clients','multi')+kpi(a.filter(c=>c.household_size>1).length,'Shared households','household')
    +kpi(review,'Awaiting review','review')+kpi(ne,'No email on file','noemail')+'</div>'
    +'<div class="panel"><div class="ph"><h3>Book by tier</h3><span class="hint">vs 20 / 60 / 20 target</span></div>'+bars+'<div style="height:8px"></div></div>'
+   +feePanel
    +'<div class="panel"><div class="ph"><h3>Deepest relationships</h3><span class="hint">by entity count</span></div><table><tbody>'+deepRows+'</tbody></table></div>'
    +panelTouch(a)+panelActivity()+panelBirthdays(a)+panelMilestones(a)+panelCompleteness(a);
 }
@@ -1058,7 +1090,9 @@ const CRIT=[
  ['sc_services','Year-round services','Year-round  ·  Partial-year  ·  Annual only']
 ];
 function scoreCard(c){
+  const fin=finFor(c);
   const rows=CRIT.map(([k,lab,hint])=>{
+    if(k==='sc_fees'&&fin&&Number(fin.invoiced_ltm)>0) hint+=' · actual last 12 mo: '+money(fin.invoiced_ltm);
     const v=c[k]||'';
     const b=(val,cls,txt)=>'<button class="'+cls+(v===val?' on':'')+'" data-sc="'+k+'" data-scv="'+val+'">'+txt+'</button>';
     return '<div class="scrow"><div class="cn"><b>'+lab+'</b><span>'+hint+'</span></div>'
@@ -1079,6 +1113,21 @@ function scoreCard(c){
     +(c.sc_updated_at?'<div class="hint" style="margin-top:5px">Scored '+new Date(c.sc_updated_at).toLocaleDateString()+(c.sc_updated_by?' by '+esc(c.sc_updated_by):'')+'</div>':'')
     +'</div></div>';
 }
+function finPanel(c){
+  const fin=finFor(c);
+  if(!fin) return '';
+  const d=v=>v?new Date(v+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+  const hasWip=Number(fin.wip_value)>0;
+  return '<div class="sect">Fees &amp; WIP <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">· live from Time &amp; Billing</span></div>'
+   +'<div class="fieldgrid">'
+   +f('Fees · last 12 mo','<b>'+money(fin.invoiced_ltm)+'</b>')
+   +f('Fees · since Jan 2024',money(fin.invoiced_total))
+   +f('Invoices',fin.invoice_count+(fin.last_invoice_date?' · last '+d(fin.last_invoice_date)+' for '+money(fin.last_invoice_amount):''))
+   +f('Unbilled WIP',hasWip?'<b style="color:var(--gold-ink,#b8860b)">'+money(fin.wip_value)+'</b> · '+Number(fin.wip_hours)+'h':'$0')
+   +f('Last time entry',d(fin.last_time_date))
+   +f('T&amp;B accounts',fin.tb_accounts)
+   +'</div>';
+}
 function viewForm(c,accts){
   const money=v=>v?('$'+Number(v).toLocaleString()):'—';
   return '<div class="sumbox"><div class="lbl"><span>Client summary</span>'
@@ -1086,6 +1135,7 @@ function viewForm(c,accts){
     +(c.summary_updated_at?'<div class="hint" style="margin-top:8px">Updated '+new Date(c.summary_updated_at).toLocaleDateString()+' · drafted from firm records, review before client use.</div>':'')
     +'</div>'
    +scoreCard(c)
+   +finPanel(c)
    +'<div class="sect">Details</div><div class="fieldgrid">'
    +f('Greeting','Hi '+esc(c.greeting||'there'))
    +f('Email','<a href="mailto:'+esc(c.email)+'">'+esc(c.email)+'</a>')
