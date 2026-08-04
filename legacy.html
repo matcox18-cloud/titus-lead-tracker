@@ -795,7 +795,10 @@ const ASK_STOP=new Set(['how','much','many','what','whats','which','is','are','w
  'amount','owe','owes','open','currently','right','now','this','that','year','ytd','please','can','you','it','be','on']);
 const ASK_METRIC=[
   [/(wip|unbilled|work in progress|not billed|time (do |we )?have)/,'wip'],
-  [/(fee|fees|billed|revenue|invoic)/,'fees'],
+  [/(fee|bill|revenue|invoic|paid us|charge)/,'fees'],
+  [/(who('s| is| has been)? work|working on|hours by|staff|team member|logged the|assigned)/,'staff'],
+  [/(haven'?t|have not|not (been )?(talk|contact|touch)|stale|overdue|attention|at risk|slipping|review|departed|left us|no notes|neglect|follow ?up)/,'risk'],
+  [/(contact|who is|who are|who's|phone|number|email address|reach|spouse|family|household|key people|key contact|entit|business(es)?|owner|principal)/,'contacts'],
   [/(last (time|entry|worked)|when did we|recent(ly)? work)/,'last'],
 ];
 function askMetric(ql){ for(const [re,m] of ASK_METRIC) if(re.test(ql)) return m; return null; }
@@ -823,6 +826,73 @@ function askAnswer(q){
   const dt=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
   const wrap=(head,body,foot)=>'<div class="askans"><b>'+head+'</b><span>'+body+'</span>'+(foot?'<i>'+foot+'</i>':'')+'</div>';
 
+  // ---- who / key contacts ------------------------------------------------
+  if(metric==='contacts'){
+    const {hits}=askMatches(q);
+    if(!hits.length) return '';
+    const c=hits.sort((a,b)=>(b.is_principal?1:0)-(a.is_principal?1:0)
+      ||(b.account_count||0)-(a.account_count||0))[0];
+    const accts=(c.accounts||'').split('|').map(s=>s.trim()).filter(Boolean);
+    const others=hits.filter(x=>x.email!==c.email).slice(0,5);
+    const L=[];
+    L.push('<b>'+esc(c.contact_name||c.email)+'</b>'+(c.is_principal?' · principal contact':''));
+    if(c.company) L.push(esc(c.company));
+    if(c.email&&hasEmail(c)) L.push('✉ '+esc(c.email));
+    if(c.phone) L.push('☎ '+esc(c.phone));
+    if(c.owner) L.push('Relationship owner: '+esc(c.owner));
+    if(c.key_people) L.push('Key people: '+esc(String(c.key_people).replace(/\n/g,'; ')));
+    if(c.household_size>1&&c.household_names) L.push('Household: '+esc(c.household_names));
+    if(accts.length) L.push('Entities ('+accts.length+'): '+accts.slice(0,6).map(esc).join(', ')
+      +(accts.length>6?' …':''));
+    if(others.length) L.push('<span style="opacity:.75">Also matching: '
+      +others.map(o=>esc(o.contact_name||o.email)).join(', ')+'</span>');
+    return wrap('Key contacts', L.join('<br>'),
+      c.relationship_group?('Relationship group: '+esc(c.relationship_group)):'');
+  }
+  // ---- who's working the client ------------------------------------------
+  if(metric==='staff'){
+    const {hits}=askMatches(q);
+    if(!hits.length) return '';
+    const rows=hits.map(c=>({c,f:finFor(c)})).filter(x=>x.f&&x.f.top_staff);
+    if(!rows.length) return wrap('Who worked it','No time logged in the last 12 months for that client.','');
+    return wrap('Who worked it · last 12 months',
+      rows.slice(0,6).map(x=>esc(x.c.contact_name||x.c.email)+' — '+esc(x.f.top_staff)
+        +' <span style="opacity:.7">('+Number(x.f.hours_ltm||0)+'h total)</span>').join('<br>'),
+      'Top three by hours');
+  }
+  // ---- attention & risk ---------------------------------------------------
+  if(metric==='risk'){
+    const dt2=d=>d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'never';
+    if(/depart|left us/.test(ql)){
+      const rows=CLIENTS.filter(c=>c.status==='departed')
+        .map(c=>({c,f:finFor(c)})).filter(x=>x.f&&Number(x.f.wip_value)>0)
+        .sort((a,b)=>b.f.wip_value-a.f.wip_value).slice(0,8);
+      if(!rows.length) return wrap('Departed clients','None are holding unbilled time.','');
+      return wrap('Departed clients still holding WIP',
+        rows.map(x=>esc(x.c.contact_name||x.c.email)+' — <b>'+money(x.f.wip_value)+'</b> · '+Number(x.f.wip_hours)+'h').join('<br>'),
+        'Bill it or write it off');
+    }
+    if(/review/.test(ql)){
+      const rows=CLIENTS.filter(c=>c.status==='review').map(c=>({c,f:finFor(c)}))
+        .sort((a,b)=>Number((b.f||{}).wip_value||0)-Number((a.f||{}).wip_value||0)).slice(0,8);
+      if(!rows.length) return wrap('Awaiting review','Nothing flagged.','');
+      const tot=CLIENTS.filter(c=>c.status==='review')
+        .reduce((s,c)=>s+Number((finFor(c)||{}).wip_value||0),0);
+      return wrap('Flagged for review',
+        rows.map(x=>esc(x.c.contact_name||x.c.email)
+          +(Number((x.f||{}).wip_value)?' — <b>'+money(x.f.wip_value)+'</b> unbilled':'')).join('<br>'),
+        CLIENTS.filter(c=>c.status==='review').length+' flagged · '+money(tot)+' unbilled between them');
+    }
+    // default: relationships going quiet
+    const rows=active().filter(c=>c.tier===1||c.tier===2)
+      .map(c=>({c,last:TOUCH[c.email]||null}))
+      .sort((a,b)=>{ if(!a.last&&!b.last) return (a.c.tier-b.c.tier);
+                     if(!a.last) return -1; if(!b.last) return 1; return new Date(a.last)-new Date(b.last); })
+      .slice(0,8);
+    return wrap('Going quiet · Tier 1 &amp; 2',
+      rows.map(x=>esc(x.c.contact_name||x.c.email)+' <span style="opacity:.7">Tier '+x.c.tier+'</span> — last note '+dt2(x.last)).join('<br>'),
+      'Oldest first · based on notes logged here');
+  }
   // "who has the most WIP" / "top clients by fees"
   if(/\b(most|top|highest|biggest|largest|who)\b/.test(ql)){
     const key=metric==='fees'?'invoiced_ltm':'wip_value';
@@ -993,7 +1063,7 @@ function viewDash(){
         +'<td style="text-align:right" class="hint">'+(Number(x.fin.wip_value)>0?money(x.fin.wip_value)+' WIP':'')+'</td></tr>').join('');
     if(top) feePanel='<div class="panel"><div class="ph"><h3>Top clients by fees</h3><span class="hint">last 12 months · from Time &amp; Billing</span></div><table><tbody>'+top+'</tbody></table></div>';
   }
-  return '<div class="dsearch"><input id="dashQ" type="search" placeholder="Search a client — or ask: how much WIP for Kontos?" autocomplete="off"><div id="dashQR" class="dsr"></div></div>'
+  return '<div class="dsearch"><input id="dashQ" type="search" placeholder="Search a client — or ask a question" autocomplete="off"><div id="dashQR" class="dsr"></div></div>'
    +'<p class="psub">'+a.length+' active clients · <b>'+(a.length-ne)+'</b> can be emailed'
    +(ne?', <span class="gap">'+ne+' have no address on file</span>':'')+'.</p>'
    +'<div class="kpis">'
