@@ -793,12 +793,14 @@ const ASK_STOP=new Set(['how','much','many','what','whats','which','is','are','w
  'at','to','who','when','last','time','hours','hour','wip','unbilled','work','progress','fee','fees','billed','billing',
  'revenue','invoice','invoiced','invoices','most','top','highest','biggest','largest','value','worked','entry','entries',
  'amount','owe','owes','open','currently','right','now','this','that','year','ytd','please','can','you','it','be','on']);
+/* Order matters: narrower intents are tested first, because a word like "unbilled"
+   would otherwise swallow "which departed clients still have unbilled time". */
 const ASK_METRIC=[
+  [/(haven'?t|have not|not (been )?(talk|contact|touch)|stale|overdue|attention|at risk|slipping|review|departed|left us|no notes|neglect|follow ?up|going quiet)/,'risk'],
+  [/(who('s| is| has been)? work|working on|hours by|staff|team member|logged the|assigned|worked on)/,'staff'],
   [/(wip|unbilled|work in progress|not billed|time (do |we )?have)/,'wip'],
   [/(fee|bill|revenue|invoic|paid us|charge)/,'fees'],
-  [/(who('s| is| has been)? work|working on|hours by|staff|team member|logged the|assigned)/,'staff'],
-  [/(haven'?t|have not|not (been )?(talk|contact|touch)|stale|overdue|attention|at risk|slipping|review|departed|left us|no notes|neglect|follow ?up)/,'risk'],
-  [/(contact|who is|who are|who's|phone|number|email address|reach|spouse|family|household|key people|key contact|entit|business(es)?|owner|principal)/,'contacts'],
+  [/(contact|who is|who are|who's|phone|number|email address|reach|spouse|family|household|key people|key contact|entit|principal)/,'contacts'],
   [/(last (time|entry|worked)|when did we|recent(ly)? work)/,'last'],
 ];
 function askMetric(ql){ for(const [re,m] of ASK_METRIC) if(re.test(ql)) return m; return null; }
