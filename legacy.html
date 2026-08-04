@@ -216,6 +216,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);ba
   padding:10px 14px;cursor:pointer;font-size:13.5px;color:#1a2230;text-align:left;font-family:inherit}
 .dsr button:hover{background:rgba(19,43,73,.06)}
 .dsr .sub{color:#6b7686;font-size:12px;margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
+/* answer card for the ask bar */
+.askans{padding:13px 15px;border-bottom:1px solid rgba(19,43,73,.10);background:rgba(209,175,68,.08)}
+.askans b{display:block;font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#8a6f1e;margin-bottom:5px}
+.askans span{display:block;font-size:14.5px;line-height:1.55;color:#1a2230}
+.askans i{display:block;font-style:normal;font-size:11.5px;color:#6b7686;margin-top:6px}
 </style><style data-wave>
 /* ============ WAVE / GLASS THEME ============ */
 :root{
@@ -505,6 +510,10 @@ td{vertical-align:middle}
 .dsr button{color:#eaf0f8}
 .dsr button:hover{background:rgba(255,255,255,.08)}
 .dsr .sub{color:#8ea3bf}
+.askans{background:rgba(226,194,95,.13);border-bottom-color:rgba(255,255,255,.12)}
+.askans b{color:#f0dc9c}
+.askans span{color:#eaf0f8}
+.askans i{color:#8ea3bf}
 </style>
 <style data-light media="not all">
 /* ============ LIGHT PALETTE — same wave design, light colors ============ */
@@ -768,6 +777,85 @@ async function loadFin(){
   }catch(e){ console.error('loadFin',e); }
 }
 const finFor=c=>FIN[String((c&&c.email)||'').toLowerCase()]||null;
+
+/* ================== ASK BAR ==================================================
+   Answers plain-English questions about YOUR data by computing them here, in the
+   browser, from records already loaded. No AI vendor, nothing leaves the firm,
+   no §7216 exposure — and the arithmetic is exact rather than "probably right".
+   e.g. "how much WIP for Kontos", "fees for Debbie Martin", "who has the most WIP"
+============================================================================== */
+const ASK_STOP=new Set(['how','much','many','what','whats','which','is','are','was','the','do','does','did','we','have',
+ 'has','in','for','of','on','a','an','our','their','my','total','sum','show','me','tell','with','and','client','clients',
+ 'at','to','who','when','last','time','hours','hour','wip','unbilled','work','progress','fee','fees','billed','billing',
+ 'revenue','invoice','invoiced','invoices','most','top','highest','biggest','largest','value','worked','entry','entries',
+ 'amount','owe','owes','open','currently','right','now','this','that','year','ytd','please','can','you','it','be','on']);
+const ASK_METRIC=[
+  [/(wip|unbilled|work in progress|not billed|time (do |we )?have)/,'wip'],
+  [/(fee|fees|billed|revenue|invoic)/,'fees'],
+  [/(last (time|entry|worked)|when did we|recent(ly)? work)/,'last'],
+];
+function askMetric(ql){ for(const [re,m] of ASK_METRIC) if(re.test(ql)) return m; return null; }
+function askMatches(q){
+  const toks=q.toLowerCase().replace(/[^a-z0-9 &']/g,' ').split(/\s+/)
+    .filter(t=>t.length>1 && !ASK_STOP.has(t));
+  if(!toks.length) return {toks:[],hits:[]};
+  const hits=active().filter(c=>{
+    const hay=[c.contact_name,c.company,c.relationship_group,c.accounts,c.household_names,c.last_name]
+      .join(' ').toLowerCase();
+    return toks.some(t=>t.length>=3 && hay.includes(t));
+  });
+  return {toks,hits};
+}
+function askAnswer(q){
+  const ql=q.toLowerCase().trim();
+  const metric=askMetric(ql);
+  if(!metric) return '';
+  if(!Object.keys(FIN).length) return '<div class="askans"><b>Still loading the figures…</b><span>Ask again in a moment.</span></div>';
+  const sum=list=>list.reduce((a,c)=>{const f=finFor(c)||{};
+    a.wip+=Number(f.wip_value||0); a.hrs+=Number(f.wip_hours||0);
+    a.ltm+=Number(f.invoiced_ltm||0); a.all+=Number(f.invoiced_total||0);
+    const d=f.last_time_date; if(d&&(!a.last||d>a.last)) a.last=d; return a;},
+    {wip:0,hrs:0,ltm:0,all:0,last:null});
+  const dt=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+  const wrap=(head,body,foot)=>'<div class="askans"><b>'+head+'</b><span>'+body+'</span>'+(foot?'<i>'+foot+'</i>':'')+'</div>';
+
+  // "who has the most WIP" / "top clients by fees"
+  if(/\b(most|top|highest|biggest|largest|who)\b/.test(ql)){
+    const key=metric==='fees'?'invoiced_ltm':'wip_value';
+    const rows=active().map(c=>({c,f:finFor(c)})).filter(x=>x.f&&Number(x.f[key])>0)
+      .sort((a,b)=>b.f[key]-a.f[key]).slice(0,5);
+    if(!rows.length) return '';
+    return wrap((metric==='fees'?'Top clients by fees (last 12 mo)':'Largest unbilled WIP'),
+      rows.map((x,i)=>(i+1)+'. '+esc(x.c.contact_name||x.c.email)+' — <b>'+money(x.f[key])+'</b>'
+        +(metric!=='fees'?' · '+Number(x.f.wip_hours)+'h':'')).join('<br>'),
+      'Computed from Time &amp; Billing · click a name below to open the record');
+  }
+  const {toks,hits}=askMatches(q);
+  // no client named → answer for the whole book
+  if(!hits.length){
+    const t=sum(active());
+    if(toks.length) return '';                       // they named something we don't recognise
+    if(metric==='wip') return wrap('Firm-wide unbilled WIP','<b>'+money(t.wip)+'</b> across '+Math.round(t.hrs).toLocaleString()+' hours','Active clients only');
+    if(metric==='fees') return wrap('Firm-wide fees','<b>'+money(t.ltm)+'</b> last 12 months · '+money(t.all)+' since Jan 2024','Active clients only');
+    return wrap('Most recent time entry',dt(t.last),'Across the active book');
+  }
+  const t=sum(hits);
+  const who=hits.length===1 ? (hits[0].contact_name||hits[0].email)
+    : (toks[0].charAt(0).toUpperCase()+toks[0].slice(1))+' — '+hits.length+' matching client records';
+  const detail=hits.length>1
+    ? hits.slice(0,6).map(c=>{const f=finFor(c)||{};
+        return '<br>· '+esc(c.contact_name||c.email)+' — '
+          +(metric==='fees'?money(f.invoiced_ltm||0):money(f.wip_value||0)+' · '+Number(f.wip_hours||0)+'h');}).join('')
+      +(hits.length>6?'<br>· …and '+(hits.length-6)+' more':'')
+    : '';
+  if(metric==='wip')
+    return wrap(who,'<b>'+money(t.wip)+'</b> unbilled · <b>'+t.hrs.toFixed(1)+' hours</b>'
+      +(t.last?' · last worked '+dt(t.last):'')+detail,'Unbilled time × current rates');
+  if(metric==='fees')
+    return wrap(who,'<b>'+money(t.ltm)+'</b> last 12 months · '+money(t.all)+' since Jan 2024'+detail,
+      'Invoiced through TaxDome + Practice CS');
+  return wrap(who,'Last time entry '+dt(t.last)+detail,'');
+}
 const active=()=>CLIENTS.filter(c=>c.status==='active');
 // Clients with no real email are stored on a synthetic key. They ARE active clients
 // (they count in the book) but can never be mailed.
@@ -901,7 +989,7 @@ function viewDash(){
         +'<td style="text-align:right" class="hint">'+(Number(x.fin.wip_value)>0?money(x.fin.wip_value)+' WIP':'')+'</td></tr>').join('');
     if(top) feePanel='<div class="panel"><div class="ph"><h3>Top clients by fees</h3><span class="hint">last 12 months · from Time &amp; Billing</span></div><table><tbody>'+top+'</tbody></table></div>';
   }
-  return '<div class="dsearch"><input id="dashQ" type="search" placeholder="Search clients — name, company, entity, email…" autocomplete="off"><div id="dashQR" class="dsr"></div></div>'
+  return '<div class="dsearch"><input id="dashQ" type="search" placeholder="Search a client — or ask: how much WIP for Kontos?" autocomplete="off"><div id="dashQR" class="dsr"></div></div>'
    +'<p class="psub">'+a.length+' active clients · <b>'+(a.length-ne)+'</b> can be emailed'
    +(ne?', <span class="gap">'+ne+' have no address on file</span>':'')+'.</p>'
    +'<div class="kpis">'
@@ -1528,13 +1616,17 @@ function bind(){
     const run=()=>{
       const q=dq.value.trim().toLowerCase();
       if(!q){RES.classList.remove('show');RES.innerHTML='';return;}
-      const hits=CLIENTS.filter(c=>[c.contact_name,c.company,c.relationship_group,c.email,c.accounts,c.household_names]
-        .some(v=>String(v||'').toLowerCase().includes(q))).slice(0,8);
-      RES.innerHTML=hits.length
+      const ans=askAnswer(dq.value);
+      // For a question, offer the clients it matched; otherwise plain name search.
+      const hits=ans
+        ? askMatches(dq.value).hits.slice(0,6)
+        : CLIENTS.filter(c=>[c.contact_name,c.company,c.relationship_group,c.email,c.accounts,c.household_names]
+            .some(v=>String(v||'').toLowerCase().includes(q))).slice(0,8);
+      RES.innerHTML=ans+(hits.length
         ? hits.map(c=>'<button data-dse="'+esc(c.email)+'"><b>'+esc(c.contact_name||c.email)+'</b>'
             +(c.tier?tierBadge(c.tier):'')
             +'<span class="sub">'+esc(c.company||c.relationship_group||c.status||'')+'</span></button>').join('')
-        : '<button disabled style="cursor:default"><span class="sub">No matches</span></button>';
+        : (ans?'':'<button disabled style="cursor:default"><span class="sub">No matches</span></button>'));
       RES.classList.add('show');
       RES.querySelectorAll('[data-dse]').forEach(b=>b.onclick=()=>{RES.classList.remove('show');dq.value='';openRec(b.dataset.dse);});
     };
