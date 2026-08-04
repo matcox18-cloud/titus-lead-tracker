@@ -194,6 +194,11 @@ input,select{font-family:inherit;color:var(--ink)}
 .grid-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}
 table.grid{border-collapse:separate;border-spacing:0;width:100%;min-width:920px}
 .grid th,.grid td{border-bottom:1px solid var(--line);text-align:left;font-size:13px}
+/* visible cell lines so the week reads like a spreadsheet */
+.grid th+th,.grid td+td{border-left:1px solid var(--line)}
+.grid thead th{border-bottom:2px solid var(--line-strong)}
+.grid td.daycell,.grid th.day{border-left:1px solid var(--line-strong)}
+.grid td.rowtot,.grid th.rowtot,.grid td.bcell,.grid th.bcell{border-left:1px solid var(--line-strong)}
 .grid thead th{position:sticky;top:0;background:var(--surface-2);z-index:5;font-weight:600;color:var(--muted);
   font-size:11px;letter-spacing:.04em;text-transform:uppercase;padding:11px 10px}
 .grid thead th.day{text-align:center;width:64px}
@@ -5600,7 +5605,25 @@ _root.render(/*#__PURE__*/React.createElement(Root, null));
 #thmBtn{position:fixed;top:80px;right:16px;z-index:99999;width:34px;height:34px;border-radius:50%;
   border:1px solid rgba(19,43,73,.25);background:#fff;color:#132b49;font-size:15px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.15)}
-@media print{#hubclust,#thmBtn{display:none}}
+#prtBtn{position:fixed;top:80px;right:60px;z-index:99999;width:34px;height:34px;border-radius:50%;
+  border:1px solid rgba(19,43,73,.25);background:#fff;color:#132b49;font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+html[data-hubtheme=dark] #prtBtn{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.28);color:#f0dc9c}
+#prtHead{display:none}
+@media print{
+  @page{margin:14mm}
+  #hubclust,#thmBtn,#prtBtn{display:none!important}
+  #prtHead{display:block!important;margin-bottom:14px;border-bottom:2px solid #132b49;padding-bottom:8px}
+  #prtHead .t{font-size:19px;font-weight:800;color:#132b49}
+  #prtHead .m{font-size:11.5px;color:#5a6b85;margin-top:3px}
+  .card,.grid-wrap{border:1px solid #c9d2df!important;box-shadow:none!important;background:#fff!important;
+    break-inside:avoid;page-break-inside:avoid}
+  .grid th,.grid td{border-color:#d6dce6!important;color:#1b2940!important}
+  .grid thead th{background:#f3f5f9!important;color:#40506a!important}
+  .grid tfoot td{background:#f3f5f9!important}
+  .meter{background:#e6eaf1!important}.meter>span{background:#3d5a85!important}
+  .btn,.iconbtn,.recents,.wk-nav,.addrow,.seg-tabs{display:none!important}
+}
 </style>
 <style data-wave>
 /* ============ WAVE / GLASS THEME for Time & Billing (matches the Hub) ============ */
@@ -5735,7 +5758,22 @@ input,select,textarea{color:#1b2940}
 #thmBtn{background:#fff;border-color:rgba(19,43,73,.22);color:#132b49}
 }
 </style>
+<button id="prtBtn" title="Print this view as a report" aria-label="Print">⎙</button>
 <button id="thmBtn" title="Toggle light / dark mode" aria-label="Toggle theme">☀</button>
+<script>
+(function(){
+  var b=document.getElementById('prtBtn'); if(!b) return;
+  b.onclick=function(){
+    var t=document.querySelector('.h-title');
+    var h=document.getElementById('prtHead');
+    if(!h){ h=document.createElement('div'); h.id='prtHead';
+      var c=document.querySelector('.content'); if(c) c.insertBefore(h,c.firstChild); }
+    h.innerHTML='<div class="t">Titus CPAs · '+((t&&t.textContent)||'Time &amp; Billing')+'</div>'
+      +'<div class="m">Time &amp; Billing · printed '+new Date().toLocaleString()+'</div>';
+    window.print();
+  };
+})();
+</script>
 <script>
 (function(){
   var KEY='hubTheme';

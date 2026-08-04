@@ -602,6 +602,46 @@ select option{background:#fff;color:#1b2940}
 .dsr button{color:#1b2940}
 .dsr button:hover{background:rgba(19,43,73,.05)}
 .dsr .sub{color:#5a6b85}
+</style>
+<style data-print>
+/* ---- print button ---- */
+#prtBtn{position:fixed;top:16px;right:104px;z-index:1200;width:34px;height:34px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.10);color:#f0dc9c;font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+html[data-hubtheme=light] #prtBtn{background:#fff;border-color:rgba(19,43,73,.22);color:#132b49}
+#prtHead{display:none}
+@media print{
+  @page{margin:14mm}
+  html,body{background:#fff!important}
+  body:before{display:none!important}
+  .sidebar,.mtop,.mnav,.topbar,.ov,.drawer,#thmBtn,#prtBtn,.dsearch,.toolbar,.modal{display:none!important}
+  .main{margin-left:0!important;width:100%!important;background:none!important}
+  .content{padding:0!important;display:block!important}
+  #prtHead{display:block!important;margin-bottom:14px;border-bottom:2px solid #132b49;padding-bottom:8px}
+  #prtHead .t{font-size:19px;font-weight:800;color:#132b49}
+  #prtHead .m{font-size:11.5px;color:#5a6b85;margin-top:3px}
+  .kpis{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
+  .kpi,.panel,.scard,.sumbox{background:#fff!important;border:1px solid #c9d2df!important;box-shadow:none!important;
+    break-inside:avoid;page-break-inside:avoid;margin-bottom:10px!important;backdrop-filter:none!important}
+  .kpi .n{-webkit-text-fill-color:#132b49!important;color:#132b49!important;font-size:20px!important}
+  .kpi .l,.ph .hint,td,th,.bar .lab,.bar .val{color:#1b2940!important}
+  .ph{background:#f3f5f9!important;border-bottom:1px solid #c9d2df!important}
+  .ph h3{color:#132b49!important}
+  th{background:#f3f5f9!important;color:#40506a!important;border-bottom:1px solid #c9d2df!important}
+  td{border-bottom:1px solid #e2e7ef!important}
+  .bar .track{background:#e6eaf1!important}.bar .fill{background:#3d5a85!important;box-shadow:none!important}
+  .badge,.tb{border:1px solid #c9d2df!important;color:#1b2940!important;background:#f3f5f9!important}
+  a{text-decoration:none;color:#1b2940!important}
+  /* printing with a record open prints the record instead */
+  body.printing-rec .content{display:none!important}
+  body.printing-rec .drawer{display:block!important;position:static!important;width:100%!important;
+    transform:none!important;box-shadow:none!important;border:0!important;background:#fff!important;overflow:visible!important}
+  body.printing-rec .dr-head{background:#f3f5f9!important;border-bottom:2px solid #132b49!important}
+  body.printing-rec .dr-head .nm{color:#132b49!important}
+  body.printing-rec .dr-body textarea,body.printing-rec .dr-head button,body.printing-rec .rowedit,
+  body.printing-rec .seg,body.printing-rec #addNote{display:none!important}
+  body.printing-rec .f .l{color:#5a6b85!important}body.printing-rec .f .v,body.printing-rec .sect{color:#132b49!important}
+}
 </style></head>
 <body>
 <aside class="sidebar">
@@ -666,7 +706,7 @@ const LOGO='data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVV
 document.getElementById('brand').src=LOGO; document.getElementById('mbrand').src=LOGO; document.getElementById('loginMark').src=LOGO;
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
 const $=i=>document.getElementById(i);
-let CLIENTS=[], CONN=[], REFS={}, ALLNOTES=[], TOUCH={}, SESSION=null, EMAIL='';
+let CLIENTS=[], CONN=[], REFS={}, ALLNOTES=[], TOUCH={}, SESSION=null, EMAIL='', IS_ADMIN=false;
 let S={view:'dashboard', q:'', tier:'', group:'flat'};
 const TABS=[['dashboard','Dashboard'],['clients','Clients'],['connectors','Connectors'],['email','Email & Marketing']];
 
@@ -680,6 +720,9 @@ function showLogin(){ $('login').classList.add('show'); }
 async function enter(){
   $('login').classList.remove('show');
   EMAIL=(SESSION&&SESSION.user?SESSION.user.email:'')||'';
+  // Mirrors hub_is_admin() in the database. The DB is the real gate; this only hides buttons.
+  IS_ADMIN=['mat@titusandcompany.com','matcox18@gmail.com','sam@titusandcompany.com']
+    .includes(String(EMAIL).toLowerCase());
   $('av').textContent=(EMAIL[0]||'?').toUpperCase();
   await load(); await loadSends(); await loadConnectors(); await loadTouch(); renderTabs(); render(); checkWon();
 }
@@ -1197,14 +1240,26 @@ function drawRec(){
    +'<div class="dr-body">'+body
    +'<div class="sect">Notes &amp; institutional knowledge</div>'
    +'<textarea id="newNote" rows="3" placeholder="Add a note from a meeting, a call, something the team should know…" style="width:100%;box-sizing:border-box"></textarea>'
-   +'<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn navy" id="addNote">Add note</button></div>'
+   +'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;align-items:center">'
+     +'<label class="btn" style="cursor:pointer;margin-right:auto" title="Attach a Claude export or meeting notes (.md, .txt, .docx)">'
+       +'⇪ Import file<input type="file" id="noteFile" accept=".md,.txt,.markdown,.docx" multiple style="display:none"></label>'
+     +'<button class="btn navy" id="addNote">Add note</button></div>'
+   +'<div class="hint" id="noteFileMsg" style="margin-top:6px;display:none"></div>'
    +'<div style="margin-top:12px">'+(notes.length?notes.map(n=>
-       '<div class="noteitem"><div class="txt">'+esc(n.note)+'</div><div class="meta">'+esc(n.author||'')+' · '+new Date(n.created_at).toLocaleString()+'</div></div>').join('')
+       '<div class="noteitem" data-nid="'+n.id+'"><div class="txt">'+esc(n.note)+'</div>'
+       +'<div class="meta">'+esc(n.author||'')+' · '+new Date(n.created_at).toLocaleString()
+       +(n.edited_at?' · <i>edited '+new Date(n.edited_at).toLocaleDateString()+(n.edited_by?' by '+esc(n.edited_by):'')+'</i>':'')
+       +' <button class="rowedit" data-ne="'+n.id+'" style="margin-left:6px">Edit</button>'
+       +(IS_ADMIN?' <button class="rowedit" data-nd="'+n.id+'" style="color:var(--danger,#ff8779)">Delete</button>':'')
+       +'</div></div>').join('')
        :'<div class="hint">No notes yet.</div>')+'</div>'
    +'</div>';
   $('recClose').onclick=closeRec;
   $('recEdit').onclick=()=>{ S.editing=!S.editing; drawRec(); };
   const an=$('addNote'); if(an) an.onclick=addNote;
+  const nf=$('noteFile'); if(nf) nf.onchange=importNoteFiles;
+  document.querySelectorAll('[data-ne]').forEach(b=>b.onclick=()=>editNote(Number(b.dataset.ne)));
+  document.querySelectorAll('[data-nd]').forEach(b=>b.onclick=()=>deleteNote(Number(b.dataset.nd)));
   const bs=$('buildSum'); if(bs) bs.onclick=buildSummary;
   document.querySelectorAll('[data-sc]').forEach(b=>b.onclick=async()=>{
     const k=b.dataset.sc, v=b.dataset.scv;
@@ -1360,6 +1415,62 @@ async function addNote(){
   if(error){ alert('Could not add note: '+error.message); }
   await loadNotes(S.rec.email); drawRec();
 }
+/* ---- edit / delete / import notes ----
+   Everyone on the team can add and edit. Only admins can delete, and the database
+   enforces that (RLS) — hiding the button is only the courtesy layer. Every edit and
+   delete is archived server-side, so nothing is ever truly lost. */
+async function editNote(id){
+  const n=(S.notes||[]).find(x=>x.id===id); if(!n) return;
+  const next=prompt('Edit note — the previous version is kept in the archive:', n.note);
+  if(next===null) return;
+  const txt=String(next).trim(); if(!txt){ alert('A note cannot be emptied. Ask an admin to delete it instead.'); return; }
+  if(txt===n.note) return;
+  const {error}=await sb.from('client_notes')
+    .update({note:txt, edited_at:new Date().toISOString(), edited_by:EMAIL}).eq('id',id);
+  if(error){ alert('Could not save the edit: '+error.message); return; }
+  await loadNotes(S.rec.email); drawRec();
+}
+async function deleteNote(id){
+  if(!confirm('Delete this note?\n\nIt stays recoverable in the archive with a record of who removed it.')) return;
+  const {error}=await sb.from('client_notes').delete().eq('id',id);
+  if(error){ alert('Could not delete: '+error.message+'\n\n(Only admins can delete notes.)'); return; }
+  await loadNotes(S.rec.email); drawRec();
+}
+async function importNoteFiles(e){
+  const files=[...(e.target.files||[])]; if(!files.length) return;
+  const msg=$('noteFileMsg'); const show=t=>{ if(msg){ msg.style.display='block'; msg.innerHTML=t; } };
+  show('Reading '+files.length+' file'+(files.length>1?'s':'')+'…');
+  let ok=0, fail=[];
+  for(const file of files){
+    try{
+      let text='';
+      if(/\.docx$/i.test(file.name)){
+        if(!window.mammoth) await new Promise((res,rej)=>{
+          const s=document.createElement('script');
+          s.src='https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js';
+          s.onload=res; s.onerror=()=>rej(new Error('could not load the .docx reader'));
+          document.head.appendChild(s);
+        });
+        const buf=await file.arrayBuffer();
+        text=(await window.mammoth.extractRawText({arrayBuffer:buf})).value||'';
+      } else {
+        text=await file.text();
+      }
+      text=text.replace(/\r\n/g,'\n').trim();
+      if(!text){ fail.push(file.name+' (empty)'); continue; }
+      if(text.length>20000) text=text.slice(0,20000)+'\n\n[truncated on import]';
+      const {error}=await sb.from('client_notes').insert({
+        client_email:S.rec.email, author:EMAIL,
+        note:'📄 Imported from '+file.name+'\n\n'+text });
+      if(error) fail.push(file.name+' ('+error.message+')'); else ok++;
+    }catch(err){ fail.push(file.name+' ('+err.message+')'); }
+  }
+  e.target.value='';
+  show((ok?'<b>Imported '+ok+' file'+(ok>1?'s':'')+'.</b>':'')
+      +(fail.length?' <span style="color:var(--danger,#ff8779)">Skipped: '+fail.map(esc).join(', ')+'</span>':''));
+  await loadNotes(S.rec.email); drawRec();
+  const m2=$('noteFileMsg'); if(m2&&ok){ m2.style.display='block'; m2.innerHTML='<b>Imported '+ok+' file'+(ok>1?'s':'')+'.</b>'; }
+}
 function buildSummary(){
   const c=S.rec, n=S.notes||[];
   const accts=(c.accounts||'').split('|').map(s=>s.trim()).filter(Boolean);
@@ -1482,7 +1593,28 @@ function bind(){
 }
 init();
 </script>
+<button id="prtBtn" title="Print this view as a report" aria-label="Print">⎙</button>
 <button id="thmBtn" title="Toggle light / dark mode" aria-label="Toggle theme">☀</button>
+<script>
+/* ---- print: builds a report header, prints the open record if a drawer is showing ---- */
+(function(){
+  var b=document.getElementById('prtBtn'); if(!b) return;
+  b.onclick=function(){
+    var recOpen=document.getElementById('drawer').classList.contains('show');
+    var titleEl=document.getElementById('pageTitle');
+    var title=recOpen ? 'Client record' : ((titleEl&&titleEl.textContent)||'Legacy Builder');
+    var who=(typeof EMAIL!=='undefined'?EMAIL:'');
+    var h=document.getElementById('prtHead');
+    if(!h){ h=document.createElement('div'); h.id='prtHead';
+      var c=document.getElementById('app'); c.parentNode.insertBefore(h,c); }
+    h.innerHTML='<div class="t">Titus CPAs · '+title+'</div><div class="m">Legacy Builder · printed '
+      +new Date().toLocaleString()+(who?' · '+who:'')+'</div>';
+    document.body.classList.toggle('printing-rec',recOpen);
+    window.print();
+    setTimeout(function(){ document.body.classList.remove('printing-rec'); },600);
+  };
+})();
+</script>
 <script>
 (function(){
   var KEY='hubTheme';
