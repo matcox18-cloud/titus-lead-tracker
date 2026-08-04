@@ -5578,16 +5578,25 @@ _root.render(/*#__PURE__*/React.createElement(Root, null));
 
 <!-- Hub section switcher: cluster of 3, fixed at the TOP (matches Groundwork/Legacy Builder) -->
 <style>
-#hubclust{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:99999}
-.hubven{display:flex;justify-content:center}
-.hubven a{width:42px;height:42px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
-  font:800 10px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;letter-spacing:.02em;
-  text-decoration:none;color:#5c6b80;position:relative;background:rgba(19,43,73,.06);
-  border:1px solid rgba(19,43,73,.22);transition:.15s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.hubven a+a{margin-left:-9px}
-.hubven a:hover{background:rgba(19,43,73,.14);color:#132b49;z-index:3;transform:translateY(-1px)}
-.hubven a.on{background:linear-gradient(135deg,#f0dc9c,#e2c25f);color:#08172c;z-index:2;border-color:transparent;
-  box-shadow:0 4px 16px rgba(226,194,95,.35), inset 0 1px 0 rgba(255,255,255,.45)}
+/* cluster lives at the TOP of the navy sidebar (both modes) — push the app nav down to make room */
+#hubclust{position:fixed;top:80px;left:14px;width:208px;z-index:99999}
+.side .nav{margin-top:104px}
+.hubstack{display:flex;flex-direction:column;position:relative}
+.hubstack a{position:relative;display:flex;align-items:center;gap:9px;padding:9px 13px;border-radius:12px;
+  font:700 11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;letter-spacing:.02em;
+  text-decoration:none;color:#b8cae4;white-space:nowrap;
+  background:linear-gradient(160deg,rgba(255,255,255,.11),rgba(255,255,255,.05));
+  border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 6px 18px rgba(0,0,0,.25);transition:.16s}
+.hubstack a+a{margin-top:-7px}
+.hubstack a:nth-child(1){margin-right:26px}
+.hubstack a:nth-child(2){margin-left:13px;margin-right:13px}
+.hubstack a:nth-child(3){margin-left:26px}
+.hubstack .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.55;flex:0 0 auto}
+.hubstack a:hover{z-index:4;transform:translateX(4px);color:#fff;background:rgba(255,255,255,.17)}
+.hubstack a.on{z-index:3;background:linear-gradient(135deg,#f0dc9c,#e2c25f);color:#08172c;border-color:transparent;
+  box-shadow:0 8px 24px rgba(226,194,95,.4), inset 0 1px 0 rgba(255,255,255,.5)}
+.hubstack a.on .dot{opacity:.85}
 #thmBtn{position:fixed;top:80px;right:16px;z-index:99999;width:34px;height:34px;border-radius:50%;
   border:1px solid rgba(19,43,73,.25);background:#fff;color:#132b49;font-size:15px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.15)}
@@ -5659,26 +5668,80 @@ _root.render(/*#__PURE__*/React.createElement(Root, null));
 .allow-chip.on{background:#d1af44;color:#08172c;border-color:#d1af44}
 .csv-area{background:rgba(255,255,255,.05);color:var(--ink);border-color:rgba(255,255,255,.2)}
 input,select,textarea{color:var(--ink)}
-/* dark skins for cluster + toggle */
-.hubven a{color:#c6d2e2;background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.25)}
-.hubven a:hover{background:rgba(255,255,255,.22);color:#fff}
+/* dark skin for theme toggle */
 #thmBtn{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.28);color:#f0dc9c}
 }
 </style>
 <div id="hubclust">
-  <div class="hubven">
-    <a href="index.html" title="Groundwork">GW</a>
-    <a href="legacy.html" title="Legacy Builder">LB</a>
-    <a class="on" href="time.html" title="Time &amp; Billing">T&amp;B</a>
+  <div class="hubstack">
+    <a href="index.html"><span class="dot"></span>Groundwork</a>
+    <a href="legacy.html"><span class="dot"></span>Legacy Builder</a>
+    <a class="on" href="time.html"><span class="dot"></span>Time &amp; Billing</a>
   </div>
 </div>
+<style data-light media="not all">
+/* ============ LIGHT PALETTE for Time & Billing — same design, light colors ============ */
+@media screen{
+:root{color-scheme:light;
+  --paper:#edf1f7; --surface:rgba(255,255,255,.82); --surface-2:rgba(19,43,73,.035);
+  --ink:#1b2940; --muted:#5a6b85; --faint:#8a97a9;
+  --line:rgba(19,43,73,.10); --line-strong:rgba(19,43,73,.22);
+  --gold-ink:#8a6f1e;
+  --good:#3f7d6e; --good-bg:#eaf3f0; --warn:#bd8a36; --warn-bg:#f7efdd; --bad:#b14b3a; --bad-bg:#f6e8e4;
+  --bill:rgba(19,43,73,.045); --nonbill:rgba(120,120,120,.05);
+  --shadow:0 1px 2px rgba(16,28,48,.06),0 8px 24px rgba(16,28,48,.08);
+}
+.tt-root{background:
+  radial-gradient(1100px 620px at 78% -8%, rgba(64,142,255,.16), transparent 62%),
+  radial-gradient(900px 520px at 8% 105%, rgba(28,86,190,.10), transparent 60%),
+  linear-gradient(168deg,#f4f7fc 0%,#e9eef7 45%,#eff2f8 100%);background-attachment:fixed}
+/* sidebar stays navy glass in light mode */
+.topbar{background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.62));border-bottom:1px solid rgba(19,43,73,.10)}
+.card,.grid-wrap{background:linear-gradient(160deg,rgba(255,255,255,.94),rgba(255,255,255,.72));border-color:rgba(19,43,73,.10)}
+.modal{background:linear-gradient(160deg,#ffffff,#eef2f9);border:1px solid rgba(19,43,73,.12)}
+.grid thead th{background:rgba(244,247,252,.96)}
+.grid tfoot td{background:rgba(19,43,73,.03)}
+.grid tbody tr:hover{background:rgba(19,43,73,.02)}
+.clickrow:hover td{background:rgba(19,43,73,.04)}
+.btn{background:#fff}
+.btn:hover{border-color:rgba(201,165,60,.7);background:#f6f8fc}
+.btn.primary{background:#132b49;border-color:#132b49}
+.btn.primary:hover{background:#1c3a5e}
+.btn.gold,.btn.gold:hover{background:linear-gradient(135deg,#e7d28a,#d1af44);color:#132b49}
+.iconbtn:hover{background:rgba(19,43,73,.07);color:#1b2940}
+.hin:focus,.cin:focus,.inv-in:focus{background:#fff;border-color:#132b49;box-shadow:0 0 0 3px rgba(19,43,73,.1)}
+.hin::placeholder{color:#c7ccd4}
+.cin,.gsel{background-color:#fff}
+.gsel option,.whoami select option{background:#fff;color:#1b2940}
+.seg-tab{background:#fff;border-color:rgba(19,43,73,.2)}
+.seg-tab.on{background:#132b49;color:#fff;border-color:#132b49}
+.rep-filter{background:#fff;color:#132b49;border-color:rgba(19,43,73,.2)}
+.timer-chip{background:#fff}
+.wk-nav{background:#fff}
+.wk-nav button{color:#1b2940}
+.wk-nav button:hover{background:rgba(19,43,73,.06)}
+.rolehint{background:#fff} .rolehint b{color:#132b49}
+.recent-chip{background:#fff}
+.recent-chip:hover{background:#f6f8fc;border-color:rgba(201,165,60,.6)}
+.tog{background:rgba(19,43,73,.2)} .tog.on{background:#132b49} .tog.on::after{background:#fff}
+.meter{background:rgba(19,43,73,.10)} .meter>span{background:#132b49}
+.daycell.today{background:rgba(209,175,68,.06)}
+.grid thead th.day small{color:#1b2940}
+.guide-card code{background:rgba(19,43,73,.05);border-color:rgba(19,43,73,.12)}
+.allow-chip{background:#fff;border-color:rgba(19,43,73,.2)}
+.allow-chip.on{background:#132b49;color:#fff;border-color:#132b49}
+.csv-area{background:#fff;color:#1b2940;border-color:rgba(19,43,73,.2)}
+input,select,textarea{color:#1b2940}
+#thmBtn{background:#fff;border-color:rgba(19,43,73,.22);color:#132b49}
+}
+</style>
 <button id="thmBtn" title="Toggle light / dark mode" aria-label="Toggle theme">☀</button>
 <script>
 (function(){
   var KEY='hubTheme';
   function cur(){ try{ return localStorage.getItem(KEY)||'dark'; }catch(e){ return 'dark'; } }
   function apply(t){
-    document.querySelectorAll('style[data-wave]').forEach(function(s){ s.disabled=(t==='light'); });
+    document.querySelectorAll('style[data-light]').forEach(function(s){ s.media=(t==='light')?'all':'not all'; });
     document.documentElement.setAttribute('data-hubtheme',t);
     var b=document.getElementById('thmBtn'); if(b) b.textContent=(t==='light'?'☾':'☀');
   }

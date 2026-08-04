@@ -300,15 +300,22 @@ tbody tr:last-child td{border-bottom:none}
 .roster-del{background:none;border:1px solid transparent;color:var(--muted);border-radius:8px;padding:6px;cursor:pointer;display:flex}
 .roster-del:hover{color:var(--danger);border-color:#f0d3d0;background:#fdf5f4}
 
-/* ---- hub cluster switcher (base) ---- */
-.hubven{display:flex;justify-content:center;margin:14px 0 4px}
-.hubven a{width:42px;height:42px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:800;letter-spacing:.02em;text-decoration:none;color:#c6d2e2;position:relative;
-  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.25);transition:.15s}
-.hubven a+a{margin-left:-9px}
-.hubven a:hover{background:rgba(255,255,255,.22);color:#fff;z-index:3;transform:translateY(-1px)}
-.hubven a.on{background:linear-gradient(135deg,#f0dc9c,#e2c25f);color:#08172c;z-index:2;border-color:transparent;
-  box-shadow:0 4px 16px rgba(226,194,95,.35), inset 0 1px 0 rgba(255,255,255,.45)}
+/* ---- hub cluster switcher: cascading glass stack (sidebar is navy in both modes) ---- */
+.hubstack{display:flex;flex-direction:column;margin:14px 14px 8px;position:relative;z-index:5}
+.hubstack a{position:relative;display:flex;align-items:center;gap:9px;padding:9px 13px;border-radius:12px;
+  font-size:11.5px;font-weight:700;letter-spacing:.02em;text-decoration:none;color:#b8cae4;white-space:nowrap;
+  background:linear-gradient(160deg,rgba(255,255,255,.11),rgba(255,255,255,.05));
+  border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 6px 18px rgba(0,0,0,.25);transition:.16s}
+.hubstack a+a{margin-top:-7px}
+.hubstack a:nth-child(1){margin-right:26px}
+.hubstack a:nth-child(2){margin-left:13px;margin-right:13px}
+.hubstack a:nth-child(3){margin-left:26px}
+.hubstack .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.55;flex:0 0 auto}
+.hubstack a:hover{z-index:4;transform:translateX(4px);color:#fff;background:rgba(255,255,255,.17)}
+.hubstack a.on{z-index:3;background:linear-gradient(135deg,#f0dc9c,#e2c25f);color:#08172c;border-color:transparent;
+  box-shadow:0 8px 24px rgba(226,194,95,.4), inset 0 1px 0 rgba(255,255,255,.5)}
+.hubstack a.on .dot{opacity:.85}
 /* ---- theme toggle (base/light) ---- */
 #thmBtn{position:fixed;top:16px;right:64px;z-index:1200;width:34px;height:34px;border-radius:50%;
   border:1px solid rgba(19,43,73,.25);background:#fff;color:#132b49;font-size:15px;cursor:pointer;
@@ -594,6 +601,134 @@ select option{background:#0d1e3a;color:#eaf0f8}
 /* dark-theme skin for theme toggle */
 #thmBtn{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.28);color:#f0dc9c}
 </style>
+<style data-light media="not all">
+/* ============ LIGHT PALETTE (Groundwork) — same wave design, light colors ============ */
+:root{color-scheme:light;
+  --ink:#1b2940; --muted:#5a6b85; --line:rgba(19,43,73,.10);
+  --bg:#e9edf5; --card:rgba(255,255,255,.66); --card2:rgba(255,255,255,.9); --white:rgba(19,43,73,.04);
+  --good-bg:rgba(95,211,154,.2); --warn-bg:rgba(240,192,90,.22); --danger-bg:rgba(255,135,121,.2);
+  --shadow:0 2px 6px rgba(23,42,72,.06), 0 18px 50px rgba(23,42,72,.10);
+  --shadow-lg:0 30px 80px rgba(23,42,72,.25);
+}
+html{background:#e9edf5}
+body{background:
+  radial-gradient(1100px 620px at 78% -8%, rgba(64,142,255,.18), transparent 62%),
+  radial-gradient(900px 520px at 8% 105%, rgba(28,86,190,.12), transparent 60%),
+  linear-gradient(168deg,#f4f7fc 0%,#e9eef7 45%,#eff2f8 100%);background-attachment:fixed}
+body:before{background:
+  repeating-linear-gradient(102deg, rgba(19,43,73,.055) 0px, rgba(19,43,73,.055) 1.5px, transparent 1.5px, transparent 15px),
+  repeating-linear-gradient(84deg, rgba(19,43,73,.04) 0px, rgba(19,43,73,.04) 1px, transparent 1px, transparent 26px)}
+::-webkit-scrollbar-thumb{background:rgba(19,43,73,.25)}
+/* sidebar stays navy glass */
+.main{background:linear-gradient(90deg, rgba(19,43,73,.04) 0px, rgba(19,43,73,0) 26px)}
+.topbar{background:linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.55));border-bottom:1px solid rgba(19,43,73,.10)}
+.topbar h1{background:linear-gradient(180deg,#132b49 30%, #3d5a85 100%);-webkit-background-clip:text;background-clip:text}
+.search svg{color:#5a6b85}
+.user-pill .nm{color:#33465f}
+.user-pill .logout{color:#68799a}
+.cloud-banner{background:rgba(201,165,60,.12);border-bottom:1px solid rgba(201,165,60,.35);color:#8a6d1e}
+.kpi,.panel,.table-wrap,.logbox,.nextbox{border:1px solid rgba(19,43,73,.10);box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.9)}
+.kpi:before{background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,.75) 46%, transparent 62%)}
+.kpi:hover{border-color:rgba(201,165,60,.5);box-shadow:0 22px 60px rgba(23,42,72,.16), inset 0 1px 0 #fff}
+.kpi .lab{color:#5a6b85}
+.kpi .val{background:linear-gradient(180deg,#132b49 25%, #40669c 100%);-webkit-background-clip:text;background-clip:text;text-shadow:none}
+.kpi .delta{color:#68799a}
+.kpi .delta b{color:#1d7a4f}
+.ic-navy{background:rgba(64,120,200,.14);color:#2a5fa8}
+.ic-gold{background:rgba(201,165,60,.16);color:#8a6d1e}
+.ic-green{background:rgba(95,211,154,.18);color:#1d7a4f}
+.ic-red{background:rgba(255,135,121,.18);color:#9c3a28}
+.panel-head{border-bottom:1px solid rgba(19,43,73,.08);background:linear-gradient(180deg, rgba(19,43,73,.03), transparent)}
+.panel-head h3{color:#16233a}
+.panel-head .hint{color:#68799a}
+.funnel-bar,.orig-bar{background:rgba(19,43,73,.08);box-shadow:inset 0 1px 3px rgba(19,43,73,.15)}
+.funnel-fill{box-shadow:0 0 12px rgba(110,170,255,.3), inset 0 1px 0 rgba(255,255,255,.5)}
+.funnel-row .nm{color:#33465f}
+.funnel-row .ct,.orig-row .val{color:#2a5fa8}
+.orig-row,.mini-row{border-bottom:1px solid rgba(19,43,73,.07)}
+.mini-av{background:rgba(64,120,200,.14);color:#2a5fa8}
+.mini-main .nm{color:#1b2940}
+.mini-main .sub,.hint{color:#68799a}
+thead th{background:rgba(19,43,73,.05);color:#5a6b85;border-bottom:1px solid rgba(19,43,73,.10)}
+tbody td{border-bottom:1px solid rgba(19,43,73,.08);color:#25344d}
+tbody tr:hover{background:rgba(64,120,200,.07)}
+.t-name{color:#16233a}
+.t-co{color:#68799a}
+.col{background:rgba(19,43,73,.045);border:1px solid rgba(19,43,73,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.6)}
+.col-head{background:linear-gradient(180deg, rgba(244,247,252,.97), rgba(244,247,252,.6));border-bottom:1px solid rgba(19,43,73,.07)}
+.col-head .t{color:#16233a}
+.col-head .meta{color:#68799a}
+.col-head .ct{background:rgba(19,43,73,.10);color:#33465f}
+.col.drop-on{background:rgba(64,120,200,.10)}
+.card{background:linear-gradient(160deg,#ffffff,#f4f7fc);border:1px solid rgba(19,43,73,.12);box-shadow:0 2px 6px rgba(23,42,72,.08)}
+.card:hover{border-color:rgba(201,165,60,.5);box-shadow:0 14px 36px rgba(23,42,72,.16), inset 0 1px 0 #fff}
+.card .nm{color:#16233a}
+.card .co{color:#5a6b85}
+.card .val{color:#2a5fa8}
+.card .foot{border-top:1px solid rgba(19,43,73,.08)}
+.card .nextstep{color:#4a5d78}
+.touch{color:#68799a}
+input,select,textarea,.filter-sel,.search input,.form-grid input,.form-grid select,.form-grid textarea,
+.logbox select,.logbox input,.logbox textarea,.login-card input,.roster-add input,.roster-add select{
+  background:#fff!important;border:1px solid rgba(19,43,73,.18)!important;color:#1b2940!important}
+input::placeholder,textarea::placeholder{color:#8496ad}
+input:focus,select:focus,textarea:focus,.filter-sel:focus{
+  border-color:rgba(201,165,60,.7)!important;background:#fff!important;box-shadow:0 0 0 3px rgba(201,165,60,.15)}
+select option{background:#fff;color:#1b2940}
+.btn-ghost{background:#fff;border:1px solid rgba(19,43,73,.16);color:#25344d}
+.btn-ghost:hover{background:#f6f8fc;border-color:rgba(201,165,60,.6);box-shadow:0 8px 24px rgba(23,42,72,.12)}
+.badge{background:rgba(19,43,73,.08);color:#4a5d78}
+.tier1{background:rgba(95,211,154,.22);color:#1d7a4f}
+.tier2{background:rgba(120,180,255,.22);color:#2a5fa8}
+.tier3{background:rgba(240,192,90,.24);color:#8a6d1e}
+.pill-src{background:rgba(19,43,73,.05);color:#4a5d78;border:1px solid rgba(19,43,73,.12)}
+.stage-pick button{background:#fff;color:#4a5d78;border:1px solid rgba(19,43,73,.14)}
+.stage-pick button:hover{color:#132b49}
+.overlay{background:rgba(23,42,72,.35)}
+.drawer{background:linear-gradient(180deg,#ffffff,#f2f5fa);border-left:1px solid rgba(19,43,73,.12);box-shadow:-24px 0 70px rgba(23,42,72,.28)}
+.dr-head{background:linear-gradient(135deg,#e6edf9,#f7f9fd);border-bottom:1px solid rgba(19,43,73,.10)}
+.dr-head .co{color:#5a6b85}
+.dr-close{color:#5a6b85}
+.field .l{color:#5a6b85}
+.field .v{color:#1b2940}
+.field .v a{color:#8a6d1e}
+.sect-title{color:#16233a}
+.sect-title::after{background:rgba(19,43,73,.12)}
+.nextbox{background:linear-gradient(160deg, rgba(209,175,68,.16), rgba(209,175,68,.05));border:1px solid rgba(201,165,60,.4)}
+.nextbox .l{color:#8a6d1e}
+.nextbox .act{color:#16233a}
+.nextbox .due{color:#4a5d78}
+.timeline::before{background:rgba(19,43,73,.15)}
+.tl-dot{background:#fff;border:2px solid #c9a53c;box-shadow:0 0 12px rgba(201,165,60,.3)}
+.tl-dot svg{color:#8a6d1e}
+.tl-item .ty{color:#1b2940}
+.tl-item .dt,.tl-item .by{color:#68799a}
+.tl-item .nt{color:#33465f}
+.tl-del{border:1px solid rgba(19,43,73,.14);color:#5a6b85;background:rgba(19,43,73,.03)}
+.logbox{background:rgba(19,43,73,.03);border:1px solid rgba(19,43,73,.10)}
+.empty{color:#7488a3}
+.empty svg{color:rgba(19,43,73,.2)}
+.modal{background:rgba(23,42,72,.4)}
+.modal-card{background:linear-gradient(160deg,#ffffff,#eef2f9);border:1px solid rgba(19,43,73,.12);box-shadow:0 30px 80px rgba(23,42,72,.3), inset 0 1px 0 #fff}
+.modal-head{border-bottom:1px solid rgba(19,43,73,.10)}
+.modal-head h3{color:#132b49}
+.modal-body{color:#25344d}
+.modal-foot{border-top:1px solid rgba(19,43,73,.10)}
+.form-grid label,.login-card label{color:#5a6b85}
+.roster-row{border-bottom:1px solid rgba(19,43,73,.08)}
+.roster-main .nm{color:#1b2940}
+.roster-main .sub{color:#68799a}
+.roster-del{color:#5a6b85}
+/* restore original inline light colors that the dark theme rescued */
+[style*="color:#3f4751"]{color:#3f4751!important}
+[style*="color:#54627a"]{color:#54627a!important}
+[style*="color:#9aa6b4"]{color:#9aa6b4!important}
+[style*="color:#7e93ab"]{color:#7e93ab!important}
+[style*="background:#fff"]{background:#fff!important}
+[style*="background:#fbfcfd"]{background:#fbfcfd!important}
+[style*="background:#faf8f2"]{background:#faf8f2!important}
+#thmBtn{background:#fff;border-color:rgba(19,43,73,.22);color:#132b49}
+</style>
 </head>
 <body>
 <!-- Login (cloud mode only) -->
@@ -622,7 +757,11 @@ select option{background:#0d1e3a;color:#eaf0f8}
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="brand" id="brandLogo"></div>
-    <div class="hubven"><a href="index.html" class="on" title="Groundwork">GW</a><a href="legacy.html" title="Legacy Builder">LB</a><a href="time.html" title="Time &amp; Billing">T&amp;B</a></div>
+    <div class="hubstack">
+      <a href="index.html" class="on"><span class="dot"></span>Groundwork</a>
+      <a href="legacy.html"><span class="dot"></span>Legacy Builder</a>
+      <a href="time.html"><span class="dot"></span>Time &amp; Billing</a>
+    </div>
     <nav class="nav" id="navMenu">
       <div class="nav-label">Sales</div>
     </nav>
@@ -1877,7 +2016,7 @@ function subscribeRealtime(){
   var KEY='hubTheme';
   function cur(){ try{ return localStorage.getItem(KEY)||'dark'; }catch(e){ return 'dark'; } }
   function apply(t){
-    document.querySelectorAll('style[data-wave]').forEach(function(s){ s.disabled=(t==='light'); });
+    document.querySelectorAll('style[data-light]').forEach(function(s){ s.media=(t==='light')?'all':'not all'; });
     document.documentElement.setAttribute('data-hubtheme',t);
     var b=document.getElementById('thmBtn'); if(b) b.textContent=(t==='light'?'☾':'☀');
   }
