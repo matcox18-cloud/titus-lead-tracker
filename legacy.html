@@ -735,7 +735,7 @@ async function enter(){
   $('login').classList.remove('show');
   EMAIL=(SESSION&&SESSION.user?SESSION.user.email:'')||'';
   // Mirrors hub_is_admin() in the database. The DB is the real gate; this only hides buttons.
-  IS_ADMIN=['mat@titusandcompany.com','matcox18@gmail.com','sam@titusandcompany.com']
+  IS_ADMIN=['mat@titusandcompany.com','matcox18@gmail.com','mcox@tituscpa.com','sam@titusandcompany.com']
     .includes(String(EMAIL).toLowerCase());
   $('av').textContent=(EMAIL[0]||'?').toUpperCase();
   await load(); await loadSends(); await loadConnectors(); await loadTouch(); renderTabs(); render(); checkWon();
